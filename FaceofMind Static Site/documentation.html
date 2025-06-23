@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How FaceofMind Works</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/animations.css">
+</head>
+<body>
+    <!-- Animated Background Blobs -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <!-- Floating Particles -->
+    <div class="particles" id="particles-js"></div>
+
+    <header class="animate__animated animate__fadeInDown">
+        <div class="container">
+            <div class="logo">
+                <!-- Inline SVG Logo -->
+                <span class="logo-svg">
+                    <i class="fas fa-brain"></i>
+                </span>
+                <h1>Faceof<span>Mind</span></h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="features.html">Features</a></li>
+                    <li><a href="documentation.html" class="active">How It Works</a></li>
+                    <li><a href="privacy.html">Privacy</a></li>
+                </ul>
+            </nav>
+            <div class="mobile-menu-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </header>
+    <main class="features-page container">
+        <section class="hero-section">
+            <div class="hero-content">
+                <h1 class="animate__animated animate__fadeIn">How FaceofMind Works</h1>
+                <p class="animate__animated animate__fadeIn animate__delay-1s">Understand the technology and principles behind FaceofMind's emotional intelligence platform</p>
+                <div class="download-section animate__animated animate__fadeIn animate__delay-2s">
+                    <button class="download-btn">
+                        <i class="fas fa-download"></i>
+                        Download FaceofMind APK
+                    </button>
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="phone-mockup">
+                    <div class="screen">
+                        <div class="app-screen animate__animated animate__fadeIn animate__delay-1s" style="background-image: url('assets/images/app-screen.png');"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="core-features">
+            <h2>Our Technology Stack</h2>
+            <div class="feature-tabs">
+                <div class="tab-header">
+                    <div class="tab-button active" data-tab="ai-models">AI Models</div>
+                    <div class="tab-button" data-tab="data-flow">Data Flow</div>
+                    <div class="tab-button" data-tab="security">Security Measures</div>
+                    <div class="tab-button" data-tab="scalability">Scalability</div>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="ai-models">
+                        <div class="tab-content-left">
+                            <h3>Cutting-Edge AI for Emotion Recognition</h3>
+                            <p>FaceofMind leverages state-of-the-art deep learning models trained on vast datasets to accurately interpret human emotions from various inputs.</p>
+                            <ul class="feature-benefits">
+                                <li><i class="fas fa-brain"></i> Convolutional Neural Networks (CNNs) for facial analysis</li>
+                                <li><i class="fas fa-microphone-alt"></i> Recurrent Neural Networks (RNNs) for voice sentiment</li>
+                                <li><i class="fas fa-cogs"></i> Ensemble learning for comprehensive emotional profiles</li>
+                            </ul>
+                        </div>
+                        <div class="tab-content-right">
+                            <div class="feature-demo">
+                                <div class="emotion-display">
+                                    <div class="face-icon">
+                                        <i class="fas fa-robot"></i>
+                                    </div>
+                                    <div class="emotion-meter">
+                                        <p>AI Processing Unit</p>
+                                        <i class="fas fa-microchip"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="data-flow">
+                        <div class="tab-content-left">
+                            <h3>Secure and Efficient Data Processing</h3>
+                            <p>Understand how your data is processed from capture to insight, ensuring privacy and performance at every step.</p>
+                            <ul class="feature-benefits">
+                                <li><i class="fas fa-mobile-alt"></i> On-device real-time analysis</li>
+                                <li><i class="fas fa-cloud-upload-alt"></i> Optional encrypted cloud synchronization</li>
+                                <li><i class="fas fa-database"></i> Secure data storage and anonymization</li>
+                            </ul>
+                        </div>
+                        <div class="tab-content-right">
+                            <div class="voice-demo">
+                                <div class="voice-wave">
+                                    <i class="fas fa-arrow-down"></i>
+                                    <i class="fas fa-hdd"></i>
+                                    <i class="fas fa-arrow-right"></i>
+                                    <i class="fas fa-cloud"></i>
+                                </div>
+                                <div class="voice-result">
+                                    <p>Data Flow Diagram</p>
+                                    <div class="sentiment-tag stress">Processing Steps</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="security">
+                        <div class="tab-content-left">
+                            <h3>Robust Security Measures</h3>
+                            <p>We implement industry-leading security protocols to protect your sensitive emotional data from unauthorized access and breaches.</p>
+                            <ul class="feature-benefits">
+                                <li><i class="fas fa-shield-alt"></i> End-to-end encryption for all data</li>
+                                <li><i class="fas fa-user-secret"></i> Strict access controls and data minimization</li>
+                                <li><i class="fas fa-file-contract"></i> Regular security audits and compliance checks</li>
+                            </ul>
+                        </div>
+                        <div class="tab-content-right">
+                            <div class="insights-demo">
+                                <div class="calendar-view">
+                                    <div class="calendar-header">
+                                        <span>Security Features</span>
+                                    </div>
+                                    <div class="calendar-days">
+                                        <div class="day happy"><i class="fas fa-lock"></i></div>
+                                        <div class="day neutral"><i class="fas fa-fingerprint"></i></div>
+                                        <div class="day stressed"><i class="fas fa-shield-alt"></i></div>
+                                        <div class="day sad"><i class="fas fa-user-shield"></i></div>
+                                        <div class="day happy"><i class="fas fa-key"></i></div>
+                                        <div class="day happy"><i class="fas fa-server"></i></div>
+                                        <div class="day neutral"><i class="fas fa-network-wired"></i></div>
+                                    </div>
+                                </div>
+                                <div class="insight-tip">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <p>Your privacy and data security are our top priorities.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="scalability">
+                        <div class="tab-content-left">
+                            <h3>Designed for Performance and Scalability</h3>
+                            <p>Our infrastructure is built to handle a growing user base and increasing data volume without compromising on speed or accuracy.</p>
+                            <ul class="feature-benefits">
+                                <li><i class="fas fa-server"></i> Cloud-native architecture with auto-scaling</li>
+                                <li><i class="fas fa-layer-group"></i> Microservices for modular development</li>
+                                <li><i class="fas fa-globe"></i> Global content delivery network (CDN) for low latency</li>
+                            </ul>
+                        </div>
+                        <div class="tab-content-right">
+                            <div class="privacy-demo">
+                                <div class="security-badge">
+                                    <i class="fas fa-globe-americas"></i>
+                                    <span>Global Reach & Performance</span>
+                                </div>
+                                <div class="privacy-controls">
+                                    <div class="control-item">
+                                        <span>User Base</span>
+                                        <div class="toggle-switch">
+                                            <i class="fas fa-users"></i>
+                                        </div>
+                                    </div>
+                                    <div class="control-item">
+                                        <span>Data Volume</span>
+                                        <div class="toggle-switch">
+                                            <i class="fas fa-database"></i>
+                                        </div>
+                                    </div>
+                                    <div class="control-item">
+                                        <span>Processing Speed</span>
+                                        <div class="toggle-switch">
+                                            <i class="fas fa-tachometer-alt"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="feature-showcase">
+            <h2>Under the Hood</h2>
+            <div class="showcase-container">
+                <div class="showcase-card">
+                    <div class="showcase-icon">
+                        <i class="fas fa-code-branch"></i>
+                    </div>
+                    <h3>Algorithm Deep Dive</h3>
+                    <p>Explore the specific algorithms and techniques used for precise emotion detection and analysis.</p>
+                    <div class="showcase-preview">
+                        <div class="line-chart">
+                            <div class="chart-line" style="height: 70%; background: #4CAF50;"></div>
+                            <div class="chart-line" style="height: 80%; background: #4CAF50;"></div>
+                            <div class="chart-line" style="height: 60%; background: #FFC107;"></div>
+                            <div class="chart-line" style="height: 90%; background: #4CAF50;"></div>
+                            <div class="chart-line" style="height: 50%; background: #FFC107;"></div>
+                            <div class="chart-line" style="height: 95%; background: #4CAF50;"></div>
+                            <div class="chart-line" style="height: 75%; background: #4CAF50;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="showcase-card">
+                    <div class="showcase-icon">
+                        <i class="fas fa-flask"></i>
+                    </div>
+                    <h3>Research & Development</h3>
+                    <p>Learn about our ongoing research efforts to improve accuracy, expand capabilities, and address new challenges in emotional AI.</p>
+                    <div class="showcase-preview">
+                        <div class="support-card">
+                            <div class="support-header">Our R&D Focus:</div>
+                            <ul class="support-options">
+                                <li><i class="fas fa-chart-line"></i> Enhancing real-time accuracy</li>
+                                <li><i class="fas fa-brain"></i> Exploring multimodal emotion fusion</li>
+                                <li><i class="fas fa-users-cog"></i> Ethical AI and bias mitigation</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="showcase-card">
+                    <div class="showcase-icon">
+                        <i class="fas fa-laptop-code"></i>
+                    </div>
+                    <h3>Development Roadmap</h3>
+                    <p>Get a glimpse into the future of FaceofMind with our planned features and upcoming technological advancements.</p>
+                    <div class="showcase-preview">
+                        <div class="roadmap-card">
+                            <div class="roadmap-item">Q4 2023: <span class="status-complete">Mobile App Launch</span></div>
+                            <div class="roadmap-item">Q1 2024: <span class="status-progress">Advanced Voice AI</span></div>
+                            <div class="roadmap-item">Q2 2024: <span class="status-upcoming">Integrations & API</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="tech-specs">
+            <h2>System Requirements</h2>
+            <div class="specs-container">
+                <div class="spec-item">
+                    <i class="fab fa-android"></i>
+                    <h3>Android</h3>
+                    <p>Version 8.0 (Oreo) or higher</p>
+                    <p>2GB RAM minimum</p>
+                    <p>Qualcomm Snapdragon 660 / MediaTek Helio P60 or equivalent</p>
+                </div>
+                <div class="spec-item">
+                    <i class="fas fa-mobile-alt"></i>
+                    <h3>iOS</h3>
+                    <p>Planned for iPhone 8 or newer</p>
+                    <p>iOS 13 or higher</p>
+                </div>
+                <div class="spec-item">
+                    <i class="fas fa-desktop"></i>
+                    <h3>Desktop</h3>
+                    <p>Under Consideration</p>
+                    <p>Potential for Windows/macOS applications</p>
+                    <p>Webcam required for facial analysis</p>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer class="animate__animated animate__fadeInUp">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <span class="logo-svg">
+                        <i class="fas fa-brain"></i>
+                    </span>
+                    <h1>Faceof<span>Mind</span></h1>
+                </div>
+                <div class="footer-links">
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="features.html">Features</a></li>
+                        <li><a href="documentation.html">How It Works</a></li>
+                        <li><a href="privacy.html">Privacy</a></li>
+                    </ul>
+                </div>
+                <div class="social-media">
+                    <a href="#"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+            </div>
+            <p class="copyright">&copy; 2023 FaceofMind. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="scripts/main.js"></script>
+    <script src="scripts/animations.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanes.forEach(pane => pane.classList.remove('active'));
+
+                    button.classList.add('active');
+                    document.getElementById(button.dataset.tab).classList.add('active');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
