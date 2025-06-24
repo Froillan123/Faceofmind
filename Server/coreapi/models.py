@@ -15,6 +15,10 @@ class User(models.Model):
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.INACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @classmethod
+    def valid_statuses(cls):
+        return ['inactive', 'active', 'deactivated', 'suspended']
+
 class Session(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     start_time = models.DateTimeField(auto_now_add=True)

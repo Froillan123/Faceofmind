@@ -4,7 +4,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 :root {
   /* Color Scheme */
-  --primary: #71E38F;
+  --primary: #5CD581;
   --primary-hover: #3a56d4;
   --error: #ef233c;
   --success: #52f04c;
@@ -25,6 +25,8 @@
   --radius-sm: 0.4rem;
   --radius-md: 0.8rem;
   --radius-lg: 1.2rem;
+
+
 }
 
 * {

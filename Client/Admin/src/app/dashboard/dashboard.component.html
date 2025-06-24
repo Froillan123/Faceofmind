@@ -1,84 +1,177 @@
-<div class="dashboard-container">
-    <div class="dashboard-header">
-      <h1>User Analytics Dashboard</h1>
-      <button class="logout-btn" (click)="logout()">
-        <i class="fas fa-sign-out-alt"></i> Logout
-      </button>
-    </div>
-  
-    <div class="filter-bar">
-      <button [class.active]="filter==='week'" (click)="setFilter('week')">
-        <i class="fas fa-calendar-week"></i> Week
-      </button>
-      <button [class.active]="filter==='month'" (click)="setFilter('month')">
-        <i class="fas fa-calendar-alt"></i> Month
-      </button>
-      <button [class.active]="filter==='year'" (click)="setFilter('year')">
-        <i class="fas fa-calendar"></i> Year
-      </button>
-    </div>
-  
-    <div *ngIf="loading" class="loading">
-      <i class="fas fa-spinner fa-spin fa-2x"></i>
-      <span>Loading analytics data...</span>
-    </div>
+<div class="dashboard-layout">
+  <nav class="side-navbar">
+    <div class="navbar-title">FaceOfMind Admin</div>
+    <ul>
+      <li class="nav-item" [class.active]="activeSection==='home'" (click)="setSection('home')"><i class="fas fa-home"></i> Home</li>
+      <li class="nav-item" [class.active]="activeSection==='manage'" (click)="setSection('manage')"><i class="fas fa-users-cog"></i> Manage Users</li>
+      <li class="nav-item"><i class="fas fa-file-alt"></i> Reports</li>
+      <li class="nav-item"><i class="fas fa-comment-dots"></i> Feedback & Complaints</li>
+      <li class="nav-item"><i class="fas fa-coins"></i> Revenue</li>
+    </ul>
+  </nav>
+  <div class="dashboard-container">
+    <div *ngIf="activeSection==='home'">
+      <div class="dashboard-header">
+        <h1>User Analytics Dashboard</h1>
+        <button class="logout-btn" (click)="logout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
     
-    <div *ngIf="error" class="error">
-      <i class="fas fa-exclamation-circle fa-2x"></i>
-      <span>{{ error }}</span>
-      <button (click)="fetchAnalytics()" class="retry-btn" style="margin-top: 1rem;">
-        <i class="fas fa-sync-alt"></i> Retry
-      </button>
-    </div>
-  
-    <div *ngIf="analytics || !loading">
-      <div class="counts-row">
-        <div class="count-card total">
-          <p>Total Users</p>
-          <h2>{{ allTimeCounts.total | number }}</h2>
-        </div>
-        <div class="count-card admin">
-          <p>Admins</p>
-          <h2>{{ allTimeCounts.admin | number }}</h2>
-        </div>
-        <div class="count-card professional">
-          <p>Professionals</p>
-          <h2>{{ allTimeCounts.professional | number }}</h2>
-        </div>
-        <div class="count-card user">
-          <p>Regular Users</p>
-          <h2>{{ allTimeCounts.regular | number }}</h2>
+      <div class="filter-bar">
+        <button [class.active]="filter==='week'" (click)="setFilter('week')">
+          <i class="fas fa-calendar-week"></i> Week
+        </button>
+        <button [class.active]="filter==='month'" (click)="setFilter('month')">
+          <i class="fas fa-calendar-alt"></i> Month
+        </button>
+        <button [class.active]="filter==='year'" (click)="setFilter('year')">
+          <i class="fas fa-calendar"></i> Year
+        </button>
+      </div>
+    
+      <div *ngIf="loading" class="full-loader-overlay">
+        <div class="loader-content">
+          <div class="mental-health-spinner"></div>
+          <div class="loader-message">Taking a mindful moment...<br>Loading your analytics.</div>
         </div>
       </div>
-  
-      <div class="charts-grid">
-        <div class="analytics-section">
-          <h3><i class="fas fa-users"></i> All Users</h3>
-          <div class="chart-container">
-            <canvas baseChart [data]="chartDataAll" [type]="chartType" [options]="chartOptions"></canvas>
+      
+      <div *ngIf="error" class="error">
+        <i class="fas fa-exclamation-circle fa-2x"></i>
+        <span>{{ error }}</span>
+        <button (click)="fetchAnalytics()" class="retry-btn" style="margin-top: 1rem;">
+          <i class="fas fa-sync-alt"></i> Retry
+        </button>
+      </div>
+    
+      <div *ngIf="analytics || !loading">
+        <div class="counts-row">
+          <div class="count-card total">
+            <div class="count-icon"><i class="fas fa-users"></i></div>
+            <p>Total Users</p>
+            <h2>{{ allTimeCounts.total | number }}</h2>
+            <div class="progress-bar-container">
+              <div class="progress-bar total" [style.width]="(allTimeCounts.total / (allTimeCounts.total || 1)) * 100 + '%'" ></div>
+            </div>
+          </div>
+          <div class="count-card admin">
+            <div class="count-icon"><i class="fas fa-user-shield"></i></div>
+            <p>Admins</p>
+            <h2>{{ allTimeCounts.admin | number }}</h2>
+            <div class="progress-bar-container">
+              <div class="progress-bar admin" [style.width]="(allTimeCounts.admin / (allTimeCounts.total || 1)) * 100 + '%'" ></div>
+            </div>
+          </div>
+          <div class="count-card professional">
+            <div class="count-icon"><i class="fas fa-user-tie"></i></div>
+            <p>Professionals</p>
+            <h2>{{ allTimeCounts.professional | number }}</h2>
+            <div class="progress-bar-container">
+              <div class="progress-bar professional" [style.width]="(allTimeCounts.professional / (allTimeCounts.total || 1)) * 100 + '%'" ></div>
+            </div>
+          </div>
+          <div class="count-card user">
+            <div class="count-icon"><i class="fas fa-user"></i></div>
+            <p>Regular Users</p>
+            <h2>{{ allTimeCounts.regular | number }}</h2>
+            <div class="progress-bar-container">
+              <div class="progress-bar user" [style.width]="(allTimeCounts.regular / (allTimeCounts.total || 1)) * 100 + '%'" ></div>
+            </div>
           </div>
         </div>
-  
-        <div class="analytics-section">
-          <h3><i class="fas fa-user-shield"></i> Admins</h3>
-          <div class="chart-container">
-            <canvas baseChart [data]="chartDataAdmin" [type]="chartType" [options]="chartOptions"></canvas>
+    
+        <div class="charts-grid">
+          <div class="analytics-section">
+            <h3><i class="fas fa-users"></i> All Users</h3>
+            <div class="chart-container cool-chart-bg">
+              <canvas baseChart [data]="chartDataAll" [type]="'line'" [options]="chartOptions"></canvas>
+            </div>
+          </div>
+    
+          <div class="analytics-section">
+            <h3><i class="fas fa-user-shield"></i> Admins</h3>
+            <div class="chart-container cool-chart-bg">
+              <canvas baseChart [data]="chartDataAdmin" [type]="'line'" [options]="chartOptions"></canvas>
+            </div>
+          </div>
+    
+          <div class="analytics-section">
+            <h3><i class="fas fa-user-tie"></i> Professionals</h3>
+            <div class="chart-container cool-chart-bg">
+              <canvas baseChart [data]="chartDataProfessional" [type]="'line'" [options]="chartOptions"></canvas>
+            </div>
+          </div>
+    
+          <div class="analytics-section">
+            <h3><i class="fas fa-user"></i> Regular Users</h3>
+            <div class="chart-container cool-chart-bg">
+              <canvas baseChart [data]="chartDataUser" [type]="'line'" [options]="chartOptions"></canvas>
+            </div>
           </div>
         </div>
-  
-        <div class="analytics-section">
-          <h3><i class="fas fa-user-tie"></i> Professionals</h3>
-          <div class="chart-container">
-            <canvas baseChart [data]="chartDataProfessional" [type]="chartType" [options]="chartOptions"></canvas>
-          </div>
-        </div>
-  
-        <div class="analytics-section">
-          <h3><i class="fas fa-user"></i> Regular Users</h3>
-          <div class="chart-container">
-            <canvas baseChart [data]="chartDataUser" [type]="chartType" [options]="chartOptions"></canvas>
-          </div>
+      </div>
+    </div>
+    <div *ngIf="activeSection==='manage'">
+      <div class="dashboard-header">
+        <h1>Manage Users</h1>
+        <button class="logout-btn" (click)="logout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
+      <div class="users-table-container">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let user of users">
+              <td>{{ user.first_name }} {{ user.last_name }}</td>
+              <td>{{ user.email }}</td>
+              <td>{{ user.role | titlecase }}</td>
+              <td>
+                <span [class.active-status]="user.status==='active'" [class.inactive-status]="user.status!=='active'">
+                  {{ user.status | titlecase }}
+                </span>
+              </td>
+              <td>
+                <button class="action-btn" (click)="openEditUser(user)"><i class="fas fa-edit"></i></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="pagination-controls" *ngIf="usersTotal > usersPageSize">
+          <button (click)="prevUsersPage()" [disabled]="usersPage === 1">Prev</button>
+          <span>Page {{ usersPage }} of {{ usersTotalPages }}</span>
+          <button (click)="nextUsersPage()" [disabled]="usersPage * usersPageSize >= usersTotal">Next</button>
         </div>
       </div>
     </div>
   </div>
+</div>
+
+<!-- Edit Status Modal -->
+<div class="modal-overlay" *ngIf="editingUser">
+  <div class="modal">
+    <h2>Edit User Status</h2>
+    <p><strong>{{ editingUser.first_name }} {{ editingUser.last_name }}</strong> ({{ editingUser.email }})</p>
+    <label for="status-select">Status:</label>
+    <select id="status-select" [(ngModel)]="editingUserStatus">
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+      <option value="deactivated">Deactivated</option>
+      <option value="suspended">Suspended</option>
+    </select>
+    <div class="modal-actions">
+      <button (click)="saveUserStatus()" [disabled]="savingStatus">Save</button>
+      <button (click)="closeEditUser()" [disabled]="savingStatus">Cancel</button>
+    </div>
+    <div *ngIf="statusError" class="error">{{ statusError }}</div>
+  </div>
+</div>

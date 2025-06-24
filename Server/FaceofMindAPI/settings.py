@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'corsheaders',
     'coreapi',
+    'django_redis',
 ]
 
 MIDDLEWARE = [
@@ -124,12 +125,25 @@ TEMPLATES = [
     },
 ]
 
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",  # or redis for prod
-        "LOCATION": "unique-otp",
+REDIS_URL = os.getenv('REDIS_URL')
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "SSL": True,
+            }
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-otp",
+        }
+    }
 
 
 WSGI_APPLICATION = 'FaceofMindAPI.wsgi.application'
