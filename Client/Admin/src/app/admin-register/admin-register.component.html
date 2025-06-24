@@ -1,0 +1,108 @@
+<div *ngIf="successMessage" class="success-toast">
+  {{ successMessage }}
+</div>
+<div *ngIf="errorMessage" class="error-toast">
+  {{ errorMessage }}
+</div>
+
+<div class="register-container">
+  <div class="register-card">
+    <div class="register-header">
+      <div class="logo-container">
+        <i class="fa-solid fa-user-shield logo"></i>
+      </div>
+      <h2>Admin Registration</h2>
+      <p class="subtitle">Create your administrator account to get started</p>
+    </div>
+    
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="register-form">
+      <div class="form-group">
+        <label for="first_name">First Name</label>
+        <div class="input-container">
+          <i class="fa-solid fa-user input-icon"></i>
+          <input type="text" id="first_name" formControlName="first_name" 
+                 [class.error]="registerForm.get('first_name')?.invalid && (registerForm.get('first_name')?.dirty || registerForm.get('first_name')?.touched)"
+                 placeholder="Enter your first name" required>
+        </div>
+        <div *ngIf="registerForm.get('first_name')?.invalid && (registerForm.get('first_name')?.dirty || registerForm.get('first_name')?.touched)"
+             class="error-message">
+          First name is required
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="last_name">Last Name</label>
+        <div class="input-container">
+          <i class="fa-solid fa-user input-icon"></i>
+          <input type="text" id="last_name" formControlName="last_name" 
+                 [class.error]="registerForm.get('last_name')?.invalid && (registerForm.get('last_name')?.dirty || registerForm.get('last_name')?.touched)"
+                 placeholder="Enter your last name" required>
+        </div>
+        <div *ngIf="registerForm.get('last_name')?.invalid && (registerForm.get('last_name')?.dirty || registerForm.get('last_name')?.touched)"
+             class="error-message">
+          Last name is required
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <div class="input-container">
+          <i class="fa-solid fa-envelope input-icon"></i>
+          <input type="email" id="email" formControlName="email" 
+                 [class.error]="registerForm.get('email')?.invalid && (registerForm.get('email')?.dirty || registerForm.get('email')?.touched)"
+                 placeholder="Enter your email" required>
+        </div>
+        <div *ngIf="registerForm.get('email')?.invalid && (registerForm.get('email')?.dirty || registerForm.get('email')?.touched)"
+             class="error-message">
+          {{ registerForm.get('email')?.errors?.['required'] ? 'Email is required' : 'Please enter a valid email' }}
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="input-container">
+          <i class="fa-solid fa-lock input-icon"></i>
+          <input [type]="showPassword ? 'text' : 'password'" id="password" formControlName="password" 
+                 [class.error]="registerForm.get('password')?.invalid && (registerForm.get('password')?.dirty || registerForm.get('password')?.touched)"
+                 placeholder="Create a password" required>
+          <i class="password-toggle" (click)="togglePasswordVisibility()">
+            <i class="fa-solid" [class.fa-eye-slash]="!showPassword" [class.fa-eye]="showPassword"></i>
+          </i>
+        </div>
+        <div class="password-hints">
+          <p class="hint" [class.valid]="registerForm.get('password')?.value?.length >= 8">
+            <i class="fa-solid" [class.fa-check]="registerForm.get('password')?.value?.length >= 8" [class.fa-circle]="registerForm.get('password')?.value?.length < 8"></i>
+            At least 8 characters
+          </p>
+          <p class="hint" [class.valid]="hasNumber()">
+            <i class="fa-solid" [class.fa-check]="hasNumber()" [class.fa-circle]="!hasNumber()"></i>
+            At least 1 number
+          </p>
+          <p class="hint" [class.valid]="hasSpecialChar()">
+            <i class="fa-solid" [class.fa-check]="hasSpecialChar()" [class.fa-circle]="!hasSpecialChar()"></i>
+            At least 1 special character
+          </p>
+          <p class="hint" [class.valid]="hasUpperCase()">
+            <i class="fa-solid" [class.fa-check]="hasUpperCase()" [class.fa-circle]="!hasUpperCase()"></i>
+            At least 1 uppercase letter
+          </p>
+        </div>
+        <div *ngIf="registerForm.get('password')?.invalid && (registerForm.get('password')?.dirty || registerForm.get('password')?.touched)"
+             class="error-message">
+          Password must meet all requirements
+        </div>
+      </div>
+      
+      <button type="submit" class="register-button" [disabled]="!registerForm.valid || loading">
+        <span *ngIf="!loading">Create Account</span>
+        <span *ngIf="loading" class="loading-spinner">
+          <i class="fa-solid fa-spinner fa-spin"></i> Processing...
+        </span>
+      </button>
+    </form>
+    
+    <div class="register-footer">
+      <p>Already have an account? <a routerLink="/" class="login-link">Sign in here</a></p>
+    </div>
+  </div>
+</div>

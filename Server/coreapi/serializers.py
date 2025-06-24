@@ -7,7 +7,6 @@ class RegisterSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
     first_name = serializers.CharField()
     last_name = serializers.CharField()
-    role = serializers.CharField()
 
 class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -16,4 +15,12 @@ class VerifyOTPSerializer(serializers.Serializer):
         if not User.objects.filter(email=value).exists():
             raise serializers.ValidationError("Email does not exist.")
         return value
-    
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'first_name', 'last_name', 'role', 'status', 'created_at']
+
+class AdminLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
