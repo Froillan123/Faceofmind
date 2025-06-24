@@ -18,10 +18,10 @@
 
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
       <div class="form-group">
-        <label for="username">Username</label>
+        <label for="email">Email</label>
         <div class="input-container">
           <i class="fa-solid fa-user input-icon"></i>
-          <input type="text" id="username" formControlName="username" placeholder="Enter your username" required>
+          <input type="email" id="email" formControlName="email" placeholder="Enter your email" required>
         </div>
       </div>
 
