@@ -18,7 +18,6 @@
 
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
       <div class="form-group">
-        <label for="email">Email</label>
         <div class="input-container">
           <i class="fa-solid fa-user input-icon"></i>
           <input type="email" id="email" formControlName="email" placeholder="Enter your email" required>
@@ -26,7 +25,6 @@
       </div>
 
       <div class="form-group">
-        <label for="password">Password</label>
         <div class="input-container">
             <i class="fa-solid fa-lock input-icon"></i>
             <input [type]="showPassword ? 'text' : 'password'" id="password" formControlName="password" placeholder="Enter your password" required>
