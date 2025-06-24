@@ -1,0 +1,60 @@
+<div *ngIf="successMessage" class="success-toast">
+  {{ successMessage }}
+</div>
+
+<div *ngIf="errorMessage" class="error-toast">
+  {{ errorMessage }}
+</div>
+
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="logo-container">
+        <i class="fa-solid fa-shield-halved logo"></i>
+      </div>
+      <h2>Admin Portal</h2>
+      <p class="subtitle">Secure access to your administration dashboard</p>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <div class="input-container">
+          <i class="fa-solid fa-user input-icon"></i>
+          <input type="text" id="username" formControlName="username" placeholder="Enter your username" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="input-container">
+            <i class="fa-solid fa-lock input-icon"></i>
+            <input [type]="showPassword ? 'text' : 'password'" id="password" formControlName="password" placeholder="Enter your password" required>
+            <i class="password-toggle" (click)="togglePasswordVisibility()">
+            <i class="fa-solid" [class.fa-eye-slash]="!showPassword" [class.fa-eye]="showPassword"></i>
+            </i>
+        </div>
+        </div>
+
+      <div class="form-options">
+        <label class="remember-me">
+          <input type="checkbox" formControlName="rememberMe">
+          <span class="checkmark"></span>
+          Remember me
+        </label>
+        <a href="#" class="forgot-password">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="login-button" [disabled]="!loginForm.valid || loading">
+        <span *ngIf="!loading">Sign In</span>
+        <span *ngIf="loading" class="loading-spinner">
+          <i class="fa-solid fa-spinner fa-spin"></i> Authenticating...
+        </span>
+      </button>
+
+      <div class="auth-links">
+        <span>Need admin access?</span>
+        <a routerLink="/admin/register" class="auth-link">Register here</a>
+      </div>
+    </form>
+  </div>
