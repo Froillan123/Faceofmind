@@ -25,7 +25,7 @@ export class AdminLoginComponent implements OnInit {
     private router: Router
   ) {
     this.loginForm = this.fb.group({
-      username: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
       password: ['', Validators.required],
       rememberMe: [false]
     });
@@ -44,9 +44,9 @@ export class AdminLoginComponent implements OnInit {
     this.errorMessage = '';
     this.successMessage = '';
 
-    const { username, password, rememberMe } = this.loginForm.value;
+    const { email, password, rememberMe } = this.loginForm.value;
 
-    this.authService.login(username, password, rememberMe).subscribe({
+    this.authService.login(email, password, rememberMe).subscribe({
       next: () => {
         this.successMessage = 'Login successful! Redirecting...';
         setTimeout(() => {
