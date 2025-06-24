@@ -1,4 +1,84 @@
 <div class="dashboard-container">
-  <h1>Welcome to the Admin Dashboard</h1>
-  <p>This is your main admin panel. More features coming soon!</p>
-</div> 
+    <div class="dashboard-header">
+      <h1>User Analytics Dashboard</h1>
+      <button class="logout-btn" (click)="logout()">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
+  
+    <div class="filter-bar">
+      <button [class.active]="filter==='week'" (click)="setFilter('week')">
+        <i class="fas fa-calendar-week"></i> Week
+      </button>
+      <button [class.active]="filter==='month'" (click)="setFilter('month')">
+        <i class="fas fa-calendar-alt"></i> Month
+      </button>
+      <button [class.active]="filter==='year'" (click)="setFilter('year')">
+        <i class="fas fa-calendar"></i> Year
+      </button>
+    </div>
+  
+    <div *ngIf="loading" class="loading">
+      <i class="fas fa-spinner fa-spin fa-2x"></i>
+      <span>Loading analytics data...</span>
+    </div>
+    
+    <div *ngIf="error" class="error">
+      <i class="fas fa-exclamation-circle fa-2x"></i>
+      <span>{{ error }}</span>
+      <button (click)="fetchAnalytics()" class="retry-btn" style="margin-top: 1rem;">
+        <i class="fas fa-sync-alt"></i> Retry
+      </button>
+    </div>
+  
+    <div *ngIf="analytics || !loading">
+      <div class="counts-row">
+        <div class="count-card total">
+          <p>Total Users</p>
+          <h2>{{ allTimeCounts.total | number }}</h2>
+        </div>
+        <div class="count-card admin">
+          <p>Admins</p>
+          <h2>{{ allTimeCounts.admin | number }}</h2>
+        </div>
+        <div class="count-card professional">
+          <p>Professionals</p>
+          <h2>{{ allTimeCounts.professional | number }}</h2>
+        </div>
+        <div class="count-card user">
+          <p>Regular Users</p>
+          <h2>{{ allTimeCounts.regular | number }}</h2>
+        </div>
+      </div>
+  
+      <div class="charts-grid">
+        <div class="analytics-section">
+          <h3><i class="fas fa-users"></i> All Users</h3>
+          <div class="chart-container">
+            <canvas baseChart [data]="chartDataAll" [type]="chartType" [options]="chartOptions"></canvas>
+          </div>
+        </div>
+  
+        <div class="analytics-section">
+          <h3><i class="fas fa-user-shield"></i> Admins</h3>
+          <div class="chart-container">
+            <canvas baseChart [data]="chartDataAdmin" [type]="chartType" [options]="chartOptions"></canvas>
+          </div>
+        </div>
+  
+        <div class="analytics-section">
+          <h3><i class="fas fa-user-tie"></i> Professionals</h3>
+          <div class="chart-container">
+            <canvas baseChart [data]="chartDataProfessional" [type]="chartType" [options]="chartOptions"></canvas>
+          </div>
+        </div>
+  
+        <div class="analytics-section">
+          <h3><i class="fas fa-user"></i> Regular Users</h3>
+          <div class="chart-container">
+            <canvas baseChart [data]="chartDataUser" [type]="chartType" [options]="chartOptions"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
