@@ -4,21 +4,24 @@
     <ul>
       <li class="nav-item" [class.active]="activeSection==='home'" (click)="setSection('home')"><i class="fas fa-home"></i> Home</li>
       <li class="nav-item" [class.active]="activeSection==='manage'" (click)="setSection('manage')"><i class="fas fa-users-cog"></i> Manage Users</li>
-      <li class="nav-item"><i class="fas fa-file-alt"></i> Reports</li>
-      <li class="nav-item"><i class="fas fa-comment-dots"></i> Feedback & Complaints</li>
-      <li class="nav-item"><i class="fas fa-coins"></i> Revenue</li>
+      <li class="nav-item" [class.active]="activeSection==='reports'" (click)="setSection('reports')"><i class="fas fa-file-alt"></i> Reports</li>
+      <li class="nav-item" [class.active]="activeSection==='feedback'" (click)="setSection('feedback')"><i class="fas fa-comment-dots"></i> Feedback & Complaints</li>
+      <li class="nav-item" [class.active]="activeSection==='revenue'" (click)="setSection('revenue')"><i class="fas fa-coins"></i> Revenue</li>
+      <li class="nav-item" [class.active]="activeSection==='createAd'" (click)="setSection('createAd')"><i class="fas fa-bullhorn"></i> Create Advertisement</li>
     </ul>
+    <div class="sidebar-logout">
+      <button class="logout-btn full-width" (click)="logout()">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
   </nav>
   <div class="dashboard-container">
     <div *ngIf="activeSection==='home'">
       <div class="dashboard-header">
         <h1>User Analytics Dashboard</h1>
-        <button class="logout-btn" (click)="logout()">
-          <i class="fas fa-sign-out-alt"></i> Logout
-        </button>
       </div>
     
-      <div class="filter-bar">
+      <div class="filter-bar" style="align-items: center;">
         <button [class.active]="filter==='week'" (click)="setFilter('week')">
           <i class="fas fa-calendar-week"></i> Week
         </button>
@@ -28,9 +31,16 @@
         <button [class.active]="filter==='year'" (click)="setFilter('year')">
           <i class="fas fa-calendar"></i> Year
         </button>
+        <button class="logout-btn" style="background: #6366f1; margin-left: 1.5rem;" (click)="refreshAnalytics()">
+          <i class="fas fa-sync-alt"></i> Refresh Data
+        </button>
       </div>
     
-      <div *ngIf="loading" class="full-loader-overlay">
+      <div *ngIf="fetching" class="fetching-message">
+        <i class="fas fa-spinner fa-spin"></i> Fetching data...
+      </div>
+      
+      <div *ngIf="loading && !fetching" class="full-loader-overlay">
         <div class="loader-content">
           <div class="mental-health-spinner"></div>
           <div class="loader-message">Taking a mindful moment...<br>Loading your analytics.</div>
@@ -114,13 +124,10 @@
     </div>
     <div *ngIf="activeSection==='manage'">
       <div class="dashboard-header">
-        <h1>Manage Users</h1>
-        <button class="logout-btn" (click)="logout()">
-          <i class="fas fa-sign-out-alt"></i> Logout
-        </button>
+        <h1 class="section-title">Manage Users</h1>
       </div>
       <div class="users-table-container">
-        <table class="users-table">
+        <table class="styled-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -151,6 +158,134 @@
           <span>Page {{ usersPage }} of {{ usersTotalPages }}</span>
           <button (click)="nextUsersPage()" [disabled]="usersPage * usersPageSize >= usersTotal">Next</button>
         </div>
+      </div>
+    </div>
+    <div *ngIf="activeSection==='reports'">
+      <div class="dashboard-header">
+        <h1 class="section-title">Reports</h1>
+      </div>
+      <div class="users-table-container">
+        <table class="styled-table">
+          <thead>
+            <tr>
+              <th>Report ID</th>
+              <th>Title</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let report of dummyReports">
+              <td>{{ report.id }}</td>
+              <td>{{ report.title }}</td>
+              <td>{{ report.date }}</td>
+              <td>{{ report.status }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div *ngIf="activeSection==='feedback'">
+      <div class="dashboard-header">
+        <h1 class="section-title">Feedback & Complaints</h1>
+      </div>
+      <div class="users-table-container">
+        <table class="styled-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Type</th>
+              <th>Message</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let feedback of dummyFeedback">
+              <td>{{ feedback.user }}</td>
+              <td>
+                <span class="badge" [ngClass]="{'badge-feedback': feedback.type === 'Feedback', 'badge-complaint': feedback.type === 'Complaint'}">
+                  {{ feedback.type }}
+                </span>
+              </td>
+              <td>{{ feedback.message }}</td>
+              <td>{{ feedback.date }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div *ngIf="activeSection==='revenue'">
+      <div class="dashboard-header">
+        <h1>Revenue Analytics</h1>
+      </div>
+      <div style="display: flex; gap: 2rem; flex-wrap: wrap; align-items: flex-start;">
+        <div style="flex: 2; min-width: 320px;">
+          <div style="display: flex; gap: 1.5rem; align-items: center; margin-bottom: 1.5rem;">
+            <button [class.active]="revenueView==='month'" (click)="setRevenueView('month')" class="filter-bar-btn">Month</button>
+            <button [class.active]="revenueView==='year'" (click)="setRevenueView('year')" class="filter-bar-btn">Year</button>
+          </div>
+          <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 220px; background: #f8faff; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 2px 12px #e0e7ef33; display: flex; flex-direction: column; align-items: flex-start;">
+              <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="background: #e0e7ff; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                  <i class="fas fa-gift" style="color: #6366f1; font-size: 1.5rem;"></i>
+                </div>
+                <div>
+                  <div style="font-size: 1.2rem; color: #6366f1; font-weight: 600;">Ads</div>
+                  <div style="font-size: 2rem; font-weight: bold; color: #222;">{{ adsCount }}</div>
+                </div>
+              </div>
+              <div style="margin-top: 0.5rem; color: #10b981; font-size: 1rem; font-weight: 500;">+{{ newAds }} New Added</div>
+            </div>
+            <div style="flex: 1; min-width: 220px; background: #f8faff; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 2px 12px #e0e7ef33; display: flex; flex-direction: column; align-items: flex-start;">
+              <div style="font-size: 1.2rem; color: #7c3aed; font-weight: 600;">Total Revenue</div>
+              <div style="font-size: 2.2rem; font-weight: bold; color: #7c3aed;">₱ {{ totalRevenue | number }}</div>
+            </div>
+          </div>
+          <div class="charts-grid" style="margin-top: 2rem; grid-template-columns: 1fr;">
+            <div class="analytics-section" style="width: 100%;">
+              <h3 style="font-size: 1.1rem; color: #6366f1; font-weight: 600;"><i class="fas fa-chart-line"></i> Revenue & Ads (6 months)</h3>
+              <div class="chart-container cool-chart-bg">
+                <canvas baseChart [data]="revenueChartData" [type]="'line'" [options]="chartOptions"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 2rem;">
+          <div style="background: #fff; border-radius: 1rem; box-shadow: 0 2px 12px #e0e7ef33; padding: 1.5rem;">
+            <div style="font-size: 1.1rem; font-weight: 600; color: #222; margin-bottom: 1rem;">Revenue Add by Month</div>
+            <div *ngFor="let r of revenueByMonth" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.7rem;">
+              <div style="width: 40px; color: #6366f1; font-weight: 600;">{{ r.month }}</div>
+              <div style="flex: 1; background: #e0e7ff; border-radius: 6px; height: 8px; position: relative;">
+                <div [style.width]="(r.value / 6000 * 100) + '%'" style="background: #6366f1; height: 100%; border-radius: 6px;"></div>
+              </div>
+              <div style="width: 50px; text-align: right; color: #6366f1; font-weight: 500;">{{ r.value | number }}</div>
+            </div>
+          </div>
+          <div style="background: #fff; border-radius: 1rem; box-shadow: 0 2px 12px #e0e7ef33; padding: 1.5rem; display: flex; flex-direction: column; align-items: center;">
+            <div style="font-size: 1.1rem; font-weight: 600; color: #222; margin-bottom: 1rem;">Ads Analytics</div>
+            <div style="width: 100px; height: 100px; position: relative;">
+              <svg width="100" height="100">
+                <circle cx="50" cy="50" r="40" stroke="#e0e7ff" stroke-width="10" fill="none" />
+                <circle cx="50" cy="50" r="40" stroke="#6366f1" stroke-width="10" fill="none" stroke-dasharray="251.2" stroke-dashoffset="50" stroke-linecap="round" />
+              </svg>
+              <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-arrow-up" style="color: #6366f1; font-size: 2rem;"></i>
+              </div>
+            </div>
+            <div style="margin-top: 0.5rem; color: #6366f1; font-weight: 600;">Ads</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="activeSection==='createAd'">
+      <div class="dashboard-header">
+        <h1>Create Advertisement</h1>
+      </div>
+      <div style="background: #fff; border-radius: 1rem; box-shadow: 0 2px 12px #e0e7ef33; padding: 2rem; max-width: 600px; margin: 2rem auto; text-align: center;">
+        <i class="fas fa-bullhorn" style="font-size: 3rem; color: #6366f1; margin-bottom: 1rem;"></i>
+        <div style="font-size: 1.3rem; font-weight: 500; margin-bottom: 1.5rem;">This is a placeholder for the Create Advertisement page.</div>
+        <button class="logout-btn" style="background: #6366f1;">Create New Ad</button>
       </div>
     </div>
   </div>

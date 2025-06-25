@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import HelloServerView, RegisterUserView, VerifyOTPView, RegisterAdminView, GetAllUsersView, AdminLoginView, UserAnalyticsView, UpdateUserStatusView
+from .views import HelloServerView, RegisterUserView, VerifyOTPView, RegisterAdminView, GetAllUsersView, AdminLoginView, UserAnalyticsView, UpdateUserStatusView, AllUserAnalyticsView
 
 urlpatterns = [
     path('hello/', HelloServerView.as_view(), name='hello-server'),
@@ -9,5 +9,6 @@ urlpatterns = [
     path('Get-All-User', GetAllUsersView.as_view(), name='Get-All-Users'),
     path('admin-login/', AdminLoginView.as_view(), name='admin-login'),
     path('user-analytics/', UserAnalyticsView.as_view(), name='user-analytics'),
+    path('all-user-analytics/', AllUserAnalyticsView.as_view(), name='all-user-analytics'),
     path('api/user-status/', UpdateUserStatusView.as_view(), name='user-status'),
 ]
