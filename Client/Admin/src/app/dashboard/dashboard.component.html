@@ -9,13 +9,22 @@
       <li class="nav-item" [class.active]="activeSection==='revenue'" (click)="setSection('revenue')"><i class="fas fa-coins"></i> Revenue</li>
       <li class="nav-item" [class.active]="activeSection==='createAd'" (click)="setSection('createAd')"><i class="fas fa-bullhorn"></i> Create Advertisement</li>
     </ul>
-    <div class="sidebar-logout">
-      <button class="logout-btn full-width" (click)="logout()">
-        <i class="fas fa-sign-out-alt"></i> Logout
+    <div class="sidebar-user-section">
+      <div class="sidebar-user-info">
+        <i class="fas fa-user-circle user-icon"></i>
+        <span class="admin-name">{{ adminName }}</span>
+      </div>
+      <button class="logout-btn sidebar-logout-btn" (click)="logout()" (mouseenter)="logoutHover=true" (mouseleave)="logoutHover=false">
+        <i class="fas fa-sign-out-alt"></i> <span *ngIf="!logoutHover">Log out</span><span *ngIf="logoutHover">Log Out</span>
       </button>
     </div>
   </nav>
   <div class="dashboard-container">
+    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 1.5rem;">
+      <button (click)="toggleDarkMode()" style="background: none; border: none; color: var(--primary); font-size: 2rem; cursor: pointer;">
+        <i class="fas" [ngClass]="{'fa-moon': !isDarkMode, 'fa-sun': isDarkMode}"></i>
+      </button>
+    </div>
     <div *ngIf="activeSection==='home'">
       <div class="dashboard-header">
         <h1>User Analytics Dashboard</h1>
@@ -31,21 +40,11 @@
         <button [class.active]="filter==='year'" (click)="setFilter('year')">
           <i class="fas fa-calendar"></i> Year
         </button>
-        <button class="logout-btn" style="background: #6366f1; margin-left: 1.5rem;" (click)="refreshAnalytics()">
+        <button class="logout-btn" style="background: var(--primary); margin-left: 1.5rem;" (click)="refreshAnalytics()">
           <i class="fas fa-sync-alt"></i> Refresh Data
         </button>
       </div>
-    
-      <div *ngIf="fetching" class="fetching-message">
-        <i class="fas fa-spinner fa-spin"></i> Fetching data...
-      </div>
       
-      <div *ngIf="loading && !fetching" class="full-loader-overlay">
-        <div class="loader-content">
-          <div class="mental-health-spinner"></div>
-          <div class="loader-message">Taking a mindful moment...<br>Loading your analytics.</div>
-        </div>
-      </div>
       
       <div *ngIf="error" class="error">
         <i class="fas fa-exclamation-circle fa-2x"></i>
@@ -126,6 +125,22 @@
       <div class="dashboard-header">
         <h1 class="section-title">Manage Users</h1>
       </div>
+      <!-- Filter Bar -->
+      <div class="users-filter-bar card" style="margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; gap: 1.2rem; align-items: center; flex: 1; position: relative;">
+          <div *ngIf="usersLoading" class="input-spinner"></div>
+          <select [(ngModel)]="usersFilter.role" (change)="applyUsersFilter()">
+            <option value="">All Roles</option>
+            <option value="admin">Admin</option>
+            <option value="professional">Professional</option>
+            <option value="user">User</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 0.8rem; align-items: center;">
+          <button (click)="applyUsersFilter()"><i class="fas fa-search"></i> Filter</button>
+          <button (click)="clearUsersFilter()" style="background: #ef233c;"><i class="fas fa-times"></i> Clear</button>
+        </div>
+      </div>
       <div class="users-table-container">
         <table class="styled-table">
           <thead>
@@ -141,11 +156,20 @@
             <tr *ngFor="let user of users">
               <td>{{ user.first_name }} {{ user.last_name }}</td>
               <td>{{ user.email }}</td>
-              <td>{{ user.role | titlecase }}</td>
               <td>
-                <span [class.active-status]="user.status==='active'" [class.inactive-status]="user.status!=='active'">
-                  {{ user.status | titlecase }}
-                </span>
+                <span class="role-badge" [ngClass]="{
+                  'role-admin': user.role === 'admin',
+                  'role-professional': user.role === 'professional',
+                  'role-user': user.role === 'user'
+                }">{{ user.role | titlecase }}</span>
+              </td>
+              <td>
+                <span class="status-badge" [ngClass]="{
+                  'status-active': user.status === 'active',
+                  'status-inactive': user.status === 'inactive',
+                  'status-deactivated': user.status === 'deactivated',
+                  'status-suspended': user.status === 'suspended'
+                }">{{ user.status | titlecase }}</span>
               </td>
               <td>
                 <button class="action-btn" (click)="openEditUser(user)"><i class="fas fa-edit"></i></button>

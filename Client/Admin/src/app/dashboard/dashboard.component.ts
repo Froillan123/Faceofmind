@@ -8,6 +8,8 @@ import { ChartConfiguration, ChartType } from 'chart.js';
 import { catchError, finalize } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 
 interface AnalyticsData {
   labels: string[];
@@ -130,6 +132,11 @@ export class DashboardComponent implements OnInit {
   usersPage = 1;
   usersPageSize = 15;
 
+  // User filter state
+  usersFilter = { query: '', role: '' };
+  usersLoading = false;
+  private usersSearch$ = new Subject<void>();
+
   // Edit user modal state
   editingUser: any = null;
   editingUserStatus: string = '';
@@ -215,6 +222,10 @@ export class DashboardComponent implements OnInit {
     ]
   };
 
+  isDarkMode = false;
+  adminName = 'Admin User'; // You can set this dynamically if you have user info
+  logoutHover = false;
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
@@ -236,6 +247,17 @@ export class DashboardComponent implements OnInit {
     } else {
       this.fetchAnalytics();
     }
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      this.isDarkMode = savedTheme === 'dark';
+    } else {
+      // Check system preference
+      this.isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    this.applyTheme();
+    this.usersSearch$.pipe(debounceTime(400)).subscribe(() => {
+      this.fetchUsers();
+    });
   }
 
   setFilter(filter: 'week' | 'month' | 'year'): void {
@@ -247,33 +269,29 @@ export class DashboardComponent implements OnInit {
 
   fetchAnalytics(): void {
     if (this.fetching) return; // Don't double-fetch
-    this.loading = true;
     this.error = '';
     const cacheKey = `analytics_${this.filter}`;
     const cached = localStorage.getItem(cacheKey);
+    let usedCached = false;
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
         if (parsed && parsed.timestamp && parsed.data) {
-          const now = Date.now();
-          if (now - parsed.timestamp < 5 * 60 * 1000) { // 5 minutes
-            this.processAnalyticsData(parsed.data);
-            this.loading = false;
-            return;
-          }
+          this.processAnalyticsData(parsed.data);
+          usedCached = true;
         }
       } catch (e) {}
     }
-    // If not cached or cache expired, fetch all in one go
+    this.loading = !usedCached; // Only show loading if no cache
+    // Always fetch latest in background
     this.fetching = true;
-    this.http.get<any>('/api/all-user-analytics/').toPromise().then((allData) => {
-      if (allData.week) localStorage.setItem('analytics_week', JSON.stringify({ timestamp: Date.now(), data: allData.week }));
-      if (allData.month) localStorage.setItem('analytics_month', JSON.stringify({ timestamp: Date.now(), data: allData.month }));
-      if (allData.year) localStorage.setItem('analytics_year', JSON.stringify({ timestamp: Date.now(), data: allData.year }));
-      const periodData = allData[this.filter];
-      if (periodData) this.processAnalyticsData(periodData);
+    this.http.get<any>(`/api/user-analytics/?period=${this.filter}`).toPromise().then((data) => {
+      if (data) localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data }));
+      this.processAnalyticsData(data);
     }).catch((err) => {
-      this.error = 'Failed to load analytics. Please try again.';
+      if (!usedCached) {
+        this.error = 'Failed to load analytics. Please try again.';
+      }
     }).finally(() => {
       this.loading = false;
       this.fetching = false;
@@ -364,7 +382,7 @@ export class DashboardComponent implements OnInit {
   }
 
   logout(): void {
-    // Clear analytics caches on logout
+    // Only clear analytics caches, not theme
     ['week', 'month', 'year'].forEach(period => {
       localStorage.removeItem(`analytics_${period}`);
     });
@@ -380,19 +398,34 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  fetchUsers(): void {
-    this.http.get<any>(`/api/Get-All-User?page=${this.usersPage}&page_size=${this.usersPageSize}`).subscribe({
-      next: (data) => {
-        this.users = data.results;
-        this.usersTotal = data.total;
-        this.usersPage = data.page;
-        this.usersPageSize = data.page_size;
-      },
-      error: (err) => {
-        this.users = [];
-        this.usersTotal = 0;
-      }
-    });
+  async fetchUsers(): Promise<void> {
+    this.usersLoading = true;
+    let params = `page=${this.usersPage}&page_size=${this.usersPageSize}`;
+    if (this.usersFilter.query) params += `&query=${encodeURIComponent(this.usersFilter.query)}`;
+    if (this.usersFilter.role) params += `&role=${encodeURIComponent(this.usersFilter.role)}`;
+    try {
+      const data = await this.http.get<any>(`/api/Get-All-User?${params}`).toPromise();
+      this.users = data.results;
+      this.usersTotal = data.total;
+      this.usersPage = data.page;
+      this.usersPageSize = data.page_size;
+    } catch (err) {
+      this.users = [];
+      this.usersTotal = 0;
+    } finally {
+      this.usersLoading = false;
+    }
+  }
+
+  applyUsersFilter() {
+    this.usersPage = 1;
+    this.usersSearch$.next();
+  }
+
+  clearUsersFilter() {
+    this.usersFilter = { query: '', role: '' };
+    this.usersPage = 1;
+    this.usersSearch$.next();
   }
 
   nextUsersPage() {
@@ -493,5 +526,19 @@ export class DashboardComponent implements OnInit {
     }).finally(() => {
       this.fetching = false;
     });
+  }
+
+  toggleDarkMode() {
+    this.isDarkMode = !this.isDarkMode;
+    localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
+    this.applyTheme();
+  }
+
+  applyTheme() {
+    if (this.isDarkMode) {
+      document.querySelector('html')?.setAttribute('data-theme', 'dark');
+    } else {
+      document.querySelector('html')?.setAttribute('data-theme', 'light');
+    }
   }
 }
