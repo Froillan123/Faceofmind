@@ -277,7 +277,7 @@ export class DashboardComponent implements OnInit {
       try {
         const parsed = JSON.parse(cached);
         if (parsed && parsed.timestamp && parsed.data) {
-          this.processAnalyticsData(parsed.data);
+            this.processAnalyticsData(parsed.data);
           usedCached = true;
         }
       } catch (e) {}
@@ -290,7 +290,7 @@ export class DashboardComponent implements OnInit {
       this.processAnalyticsData(data);
     }).catch((err) => {
       if (!usedCached) {
-        this.error = 'Failed to load analytics. Please try again.';
+      this.error = 'Failed to load analytics. Please try again.';
       }
     }).finally(() => {
       this.loading = false;

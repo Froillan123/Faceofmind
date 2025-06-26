@@ -28,6 +28,10 @@ class UserResponse(UserBase):
     status: UserStatus
     created_at: datetime
 
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
+
     class Config:
         orm_mode = True
 

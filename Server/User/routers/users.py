@@ -34,20 +34,17 @@ def get_user(
     current_user: User = Depends(get_current_user)
 ):
     """Get a specific user by ID."""
-    # Users can only access their own data unless they're admin
     if current_user.id != user_id and current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
     return user
 
 
@@ -58,26 +55,26 @@ def update_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Update a user."""
-    # Users can only update their own data unless they're admin
+    """Update a user (only if role is 'user')."""
     if current_user.id != user_id and current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
-    # Update user fields
+    if user.role != "user":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only users with role 'user' can be updated."
+        )
     update_data = user_update.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(user, field, value)
-    
     db.commit()
     db.refresh(user)
     return user
@@ -141,22 +138,24 @@ def deactivate_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Deactivate a user (admin only)."""
+    """Deactivate a user (only if role is 'user')."""
     if current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+    if user.role != "user":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only users with role 'user' can be deactivated."
+        )
     user.status = UserStatus.DEACTIVATED
     db.commit()
     db.refresh(user)
-    
     return {"message": "User deactivated successfully", "user": user} 

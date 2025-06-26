@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from database import engine
 from models import Base
-from routers import auth, users, sessions
+from routers import auth, users, sessions, users_router, posts_router, comments_router
 
 # Removed table creation. Only Django manages tables.
 
@@ -27,6 +27,9 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(sessions.router, prefix="/api/v1")
+app.include_router(users_router, prefix="/api/v1")
+app.include_router(posts_router, prefix="/api/v1")
+app.include_router(comments_router, prefix="/api/v1")
 
 
 @app.get("/")
