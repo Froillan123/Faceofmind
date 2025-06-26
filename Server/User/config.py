@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     smtp_password: str = os.getenv("SMTP_PASSWORD")
     # Redis configuration
     redis_url: str = os.getenv("REDIS_URL")
+    # OpenRouter API (hardcoded)
+    openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY")
+    openrouter_api_url: str = os.getenv("OPENROUTER_API_URL")
 
     class Config:
         env_file = ".env"

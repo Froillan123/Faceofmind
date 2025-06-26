@@ -3,11 +3,20 @@ from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
 from database import get_db
-from models import Session as SessionModel, User
+from models import Session as SessionModel, User, EmotionDetection, FacialData, VoiceData, WellnessSuggestion
 from schemas import SessionCreate, SessionResponse, SessionWithDetections
-from dependencies import get_current_active_user
+from dependencies import get_current_active_user, get_current_user
+from config import settings
+import requests
+import json
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+
+class ProcessEmotionRequest(BaseModel):
+    emotion: str
+    voice_content: str
 
 
 @router.post("/", response_model=SessionResponse)
@@ -117,4 +126,86 @@ def delete_session(
     db.delete(session)
     db.commit()
     
-    return {"message": "Session deleted successfully"} 
+    return {"message": "Session deleted successfully"}
+
+
+@router.post("/{session_id}/process_emotion")
+def process_emotion(
+    session_id: int,
+    req: ProcessEmotionRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    # 1. Insert EmotionDetection
+    detection = EmotionDetection(session_id=session_id)
+    db.add(detection)
+    db.commit()
+    db.refresh(detection)
+
+    # 2. Insert FacialData
+    facial = FacialData(detection_id=detection.id, emotion=req.emotion)
+    db.add(facial)
+    db.commit()
+    db.refresh(facial)
+
+    # 3. Insert VoiceData
+    voice = VoiceData(detection_id=detection.id, audio_path="", content=req.voice_content)
+    db.add(voice)
+    db.commit()
+    db.refresh(voice)
+
+    # 4. Call OpenRouter API
+    url = settings.openrouter_api_url
+    headers = {
+        "Authorization": f"Bearer {settings.openrouter_api_key}",
+        "Content-Type": "application/json"
+    }
+    # Compose the prompt for OpenRouter (OpenAI-compatible)
+    prompt = (
+        f"Given the following:\n"
+        f"- Detected facial emotion: {req.emotion}\n"
+        f"- User said: \"{req.voice_content}\"\n"
+        "Give a wellness suggestion that is directly related to both the emotion and the voice content. "
+        "Reply with:\n"
+        "1 short main topic sentence (max 15 words), and 3 short bullet points (max 12 words each). "
+        "Be concise and specific."
+    )
+    payload = {
+        "model": "openai/gpt-4o", # or another model available on OpenRouter
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a wellness assistant. Always keep your answers short, specific, and directly related to the user's emotion and statement."
+            },
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": 128
+    }
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        print("OpenRouter raw response:", response.text)
+        response.raise_for_status()
+        data = response.json()
+        print("OpenRouter API response:", data)  # <-- LOG THE RAW RESPONSE
+        # Extract the assistant's reply
+        suggestion_text = data["choices"][0]["message"]["content"]
+    except Exception as e:
+        print("Exception in OpenRouter call:", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # 5. Store WellnessSuggestion
+    suggestion = WellnessSuggestion(
+        detection_id=detection.id,
+        suggestion=suggestion_text
+    )
+    db.add(suggestion)
+    db.commit()
+    db.refresh(suggestion)
+
+    return {
+        "session_id": session_id,
+        "emotion_detection_id": detection.id,
+        "facial_emotion": req.emotion,
+        "voice_content": req.voice_content,
+        "wellness_suggestion": suggestion_text
+    } 
