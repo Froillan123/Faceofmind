@@ -7,5 +7,7 @@ export const routes: Routes = [
   { path: '', component: AdminLoginComponent },
   { path: 'admin/register', component: AdminRegisterComponent },
   { path: 'dashboard', component: DashboardComponent },
-  // ...other routes
+  { path: 'admin-login', component: AdminLoginComponent },
+  // Catch-all route - redirect to login if route not found
+  { path: '**', redirectTo: '', pathMatch: 'full' }
 ];

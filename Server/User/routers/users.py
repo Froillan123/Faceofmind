@@ -138,8 +138,8 @@ def deactivate_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Deactivate a user (only if role is 'user')."""
-    if current_user.role != "admin":
+    """Deactivate a user (user can deactivate self, admin can deactivate any user)."""
+    if current_user.id != user_id and current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"

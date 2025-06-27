@@ -246,4 +246,17 @@ class SessionWithDetections(SessionResponse):
 class EmotionDetectionWithData(EmotionDetectionResponse):
     facial_data: List[FacialDataResponse] = []
     voice_data: List[VoiceDataResponse] = []
-    wellness_suggestions: List[WellnessSuggestionResponse] = [] 
+    wellness_suggestions: List[WellnessSuggestionResponse] = []
+
+class FeedbackCreate(BaseModel):
+    comment: str
+    rating: int  # 1-5
+
+class FeedbackResponse(BaseModel):
+    id: int
+    session_id: int
+    comment: str
+    rating: int
+
+    class Config:
+        orm_mode = True 

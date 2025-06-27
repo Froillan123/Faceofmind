@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
 from database import get_db
-from models import Session as SessionModel, User, EmotionDetection, FacialData, VoiceData, WellnessSuggestion
-from schemas import SessionCreate, SessionResponse, SessionWithDetections
+from models import Session as SessionModel, User, EmotionDetection, FacialData, VoiceData, WellnessSuggestion, Feedback
+from schemas import SessionCreate, SessionResponse, SessionWithDetections, FeedbackCreate, FeedbackResponse
 from dependencies import get_current_active_user, get_current_user
 from config import settings
 import requests
@@ -165,10 +165,11 @@ def process_emotion(
         f"Given the following:\n"
         f"- Detected facial emotion: {req.emotion}\n"
         f"- User said: \"{req.voice_content}\"\n"
-        "Give a wellness suggestion that is directly related to both the emotion and the voice content. "
+        "Acknowledge the user's feelings and situation in your response. "
+        "Then, give a wellness suggestion that is directly related to both the emotion and the voice content. "
         "Reply with:\n"
         "1 short main topic sentence (max 15 words), and 3 short bullet points (max 12 words each). "
-        "Be concise and specific."
+        "Always use 'you' to address the user directly. Be concise and specific."
     )
     payload = {
         "model": "openai/gpt-4o", # or another model available on OpenRouter
@@ -208,4 +209,45 @@ def process_emotion(
         "facial_emotion": req.emotion,
         "voice_content": req.voice_content,
         "wellness_suggestion": suggestion_text
-    } 
+    }
+
+
+@router.post("/{session_id}/feedback", response_model=FeedbackResponse)
+def submit_feedback(
+    session_id: int,
+    feedback: FeedbackCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    # 1. Check session exists and belongs to user
+    session = db.query(SessionModel).filter(
+        SessionModel.id == session_id,
+        SessionModel.user_id == current_user.id
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if not session.end_time:
+        raise HTTPException(status_code=400, detail="Session is not ended yet")
+
+    # 2. Check if feedback already exists (optional, to prevent duplicates)
+    existing = db.query(Feedback).filter(Feedback.session_id == session_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Feedback already submitted for this session")
+
+    # 3. Create feedback
+    db_feedback = Feedback(session_id=session_id, comment=feedback.comment, rating=feedback.rating)
+    db.add(db_feedback)
+    db.commit()
+    db.refresh(db_feedback)
+    return db_feedback
+
+
+@router.get("/{session_id}/feedback", response_model=FeedbackResponse)
+def get_feedback(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    feedback = db.query(Feedback).join(SessionModel).filter(
+        Feedback.session_id == session_id,
+        SessionModel.user_id == current_user.id
+    ).first()
+    if not feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    return feedback 

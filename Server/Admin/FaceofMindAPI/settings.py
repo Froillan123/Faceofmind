@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'coreapi',
     'django_redis',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -125,26 +126,20 @@ TEMPLATES = [
     },
 ]
 
-REDIS_URL = os.getenv('REDIS_URL')
-if REDIS_URL:
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": REDIS_URL,
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "SSL": True,
-            }
-        }
+# Cache configuration - Using local memory cache for analytics to avoid bugs
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "analytics-cache",
     }
-else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "unique-otp",
-        }
-    }
+}
 
+# Redis configuration for JWT tokens only (separate from Django cache)
+REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
+REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
+
+# Redis URL for coreapi.utils.get_redis()
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
 WSGI_APPLICATION = 'FaceofMindAPI.wsgi.application'
 
@@ -175,6 +170,14 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.BCryptPasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+]
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -197,3 +200,13 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Django Channels Configuration
+ASGI_APPLICATION = 'FaceofMindAPI.asgi.application'
+
+# Channel Layers for WebSocket - Using local memory to avoid Redis bugs
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}

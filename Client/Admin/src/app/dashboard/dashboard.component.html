@@ -142,6 +142,10 @@
         </div>
       </div>
       <div class="users-table-container">
+        <div class="active-users-summary" style="margin-bottom: 1rem; padding: 1rem; background: #f0f9ff; border-radius: 0.5rem; border-left: 4px solid #10b981;">
+          <i class="fas fa-users" style="color: #10b981; margin-right: 0.5rem;"></i>
+          <strong>{{ activeUsersCount || 0 }}</strong> users currently active (logged in)
+        </div>
         <table class="styled-table">
           <thead>
             <tr>
@@ -149,11 +153,12 @@
               <th>Email</th>
               <th>Role</th>
               <th>Status</th>
+              <th>Active</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let user of users">
+            <tr *ngFor="let user of users" [class.active-user-row]="user.is_active_in_redis">
               <td>{{ user.first_name }} {{ user.last_name }}</td>
               <td>{{ user.email }}</td>
               <td>
@@ -170,6 +175,16 @@
                   'status-deactivated': user.status === 'deactivated',
                   'status-suspended': user.status === 'suspended'
                 }">{{ user.status | titlecase }}</span>
+              </td>
+              <td>
+                <span *ngIf="user.is_active_in_redis" class="active-indicator">
+                  <i class="fas fa-circle" style="color: #10b981; font-size: 0.8rem;"></i>
+                  Online
+                </span>
+                <span *ngIf="!user.is_active_in_redis" class="inactive-indicator">
+                  <i class="fas fa-circle" style="color: #9ca3af; font-size: 0.8rem;"></i>
+                  Offline
+                </span>
               </td>
               <td>
                 <button class="action-btn" (click)="openEditUser(user)"><i class="fas fa-edit"></i></button>

@@ -4,6 +4,9 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
 from config import settings
+from redis_client import get_redis
+import asyncio
+import redis
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -71,4 +74,22 @@ def get_user_from_refresh_token(token: str) -> Optional[dict]:
             detail="Invalid refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return payload 
+    return payload
+
+
+async def store_jwt_in_redis(token: str, user_id: str, expires_in: int):
+    redis = await get_redis()
+    await redis.set(f"jwt:{user_id}:{token}", 1, ex=expires_in)
+
+
+async def is_jwt_active(token: str, user_id: str) -> bool:
+    redis = await get_redis()
+    return await redis.exists(f"jwt:{user_id}:{token}") == 1
+
+
+async def remove_jwt_from_redis(token: str, user_id: str):
+    redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
+    key = f"jwt:{user_id}:{token}"
+    result = await redis_client.delete(key)
+    print("DELETE JWT KEY:", key, "Result:", result)
+    return result 
