@@ -149,50 +149,77 @@ def process_emotion(
     db.refresh(facial)
 
     # 3. Insert VoiceData
-    voice = VoiceData(detection_id=detection.id, audio_path="", content=req.voice_content)
+    voice = VoiceData(detection_id=detection.id, content=req.voice_content)
     db.add(voice)
     db.commit()
     db.refresh(voice)
 
-    # 4. Call OpenRouter API
-    url = settings.openrouter_api_url
-    headers = {
-        "Authorization": f"Bearer {settings.openrouter_api_key}",
-        "Content-Type": "application/json"
-    }
-    # Compose the prompt for OpenRouter (OpenAI-compatible)
-    prompt = (
-        f"Given the following:\n"
-        f"- Detected facial emotion: {req.emotion}\n"
-        f"- User said: \"{req.voice_content}\"\n"
-        "Acknowledge the user's feelings and situation in your response. "
-        "Then, give a wellness suggestion that is directly related to both the emotion and the voice content. "
-        "Reply with:\n"
-        "1 short main topic sentence (max 15 words), and 3 short bullet points (max 12 words each). "
-        "Always use 'you' to address the user directly. Be concise and specific."
-    )
-    payload = {
-        "model": "openai/gpt-4o", # or another model available on OpenRouter
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a wellness assistant. Always keep your answers short, specific, and directly related to the user's emotion and statement."
-            },
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 128
-    }
-    try:
-        response = requests.post(url, json=payload, headers=headers)
-        print("OpenRouter raw response:", response.text)
-        response.raise_for_status()
-        data = response.json()
-        print("OpenRouter API response:", data)  # <-- LOG THE RAW RESPONSE
-        # Extract the assistant's reply
-        suggestion_text = data["choices"][0]["message"]["content"]
-    except Exception as e:
-        print("Exception in OpenRouter call:", e)
-        raise HTTPException(status_code=500, detail=str(e))
+    # 4. Call OpenRouter API with better error handling
+    suggestion_text = ""
+    
+    # Check if OpenRouter settings are configured
+    if not settings.openrouter_api_key or not settings.openrouter_api_url:
+        print("OpenRouter API not configured, using fallback response")
+        suggestion_text = f"Based on your {req.emotion} emotion and concerns about {req.voice_content[:30]}..., I understand you're going through a challenging time. Here are some suggestions: • Take deep breaths to calm your mind • Break down your goals into smaller steps • Remember that progress takes time and patience"
+    else:
+        try:
+            url = settings.openrouter_api_url
+            headers = {
+                "Authorization": f"Bearer {settings.openrouter_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            # Compose the prompt for OpenRouter (OpenAI-compatible)
+            prompt = (
+                f"Given the following:\n"
+                f"- Detected facial emotion: {req.emotion}\n"
+                f"- User said: \"{req.voice_content}\"\n"
+                "Acknowledge the user's feelings and situation in your response. "
+                "Then, give a wellness suggestion that is directly related to both the emotion and the voice content. "
+                "Reply with:\n"
+                "1 short main topic sentence (max 15 words), and 3 short bullet points (max 12 words each). "
+                "Always use 'you' to address the user directly. Be concise and specific."
+            )
+            
+            payload = {
+                "model": "openai/gpt-4o",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a wellness assistant. Always keep your answers short, specific, and directly related to the user's emotion and statement."
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 128
+            }
+            
+            print(f"Making OpenRouter API call to: {url}")
+            print(f"Headers: {headers}")
+            print(f"Payload: {payload}")
+            
+            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            print(f"OpenRouter response status: {response.status_code}")
+            print(f"OpenRouter response headers: {response.headers}")
+            print(f"OpenRouter raw response: {response.text}")
+            
+            if response.status_code == 200:
+                try:
+                    data = response.json()
+                    print(f"OpenRouter API response: {data}")
+                    suggestion_text = data["choices"][0]["message"]["content"]
+                except (KeyError, IndexError, ValueError) as json_error:
+                    print(f"JSON parsing error: {json_error}")
+                    suggestion_text = f"I understand you're feeling {req.emotion}. Based on what you shared, here are some helpful suggestions: • Take a moment to breathe deeply • Focus on one small step at a time • Remember that challenges are opportunities for growth"
+            else:
+                print(f"OpenRouter API returned status {response.status_code}")
+                suggestion_text = f"I sense you're feeling {req.emotion} about your situation. Here are some gentle suggestions: • Practice self-compassion • Take breaks when needed • Celebrate small victories"
+                
+        except requests.exceptions.RequestException as req_error:
+            print(f"Request error: {req_error}")
+            suggestion_text = f"I understand you're experiencing {req.emotion} emotions. Here are some supportive suggestions: • Be kind to yourself • Take things one step at a time • Remember that it's okay to ask for help"
+        except Exception as e:
+            print(f"Unexpected error in OpenRouter call: {e}")
+            suggestion_text = f"Based on your {req.emotion} emotion, I want to support you. Here are some helpful tips: • Practice mindfulness • Set realistic expectations • Seek support when needed"
 
     # 5. Store WellnessSuggestion
     suggestion = WellnessSuggestion(

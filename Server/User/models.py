@@ -75,7 +75,6 @@ class VoiceData(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     detection_id = Column(Integer, ForeignKey("emotion_detections.id"), nullable=False)
-    audio_path = Column(Text, nullable=False)
     content = Column(Text, nullable=False)
 
     # Relationships
