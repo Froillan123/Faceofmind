@@ -239,18 +239,20 @@ class UserWithSessions(UserResponse):
     sessions: List[SessionResponse] = []
 
 
-class SessionWithDetections(SessionResponse):
-    emotion_detections: List[EmotionDetectionResponse] = []
-
-
 class EmotionDetectionWithData(EmotionDetectionResponse):
     facial_data: List[FacialDataResponse] = []
     voice_data: List[VoiceDataResponse] = []
     wellness_suggestions: List[WellnessSuggestionResponse] = []
 
+
+class SessionWithDetections(SessionResponse):
+    emotion_detections: List[EmotionDetectionWithData] = []
+
+
 class FeedbackCreate(BaseModel):
     comment: str
     rating: int  # 1-5
+
 
 class FeedbackResponse(BaseModel):
     id: int

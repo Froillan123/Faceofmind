@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from .models import User
+from .models import User, Feedback
 
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -24,3 +24,15 @@ class UserSerializer(serializers.ModelSerializer):
 class AdminLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
+
+class FeedbackSerializer(serializers.ModelSerializer):
+    rating = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Feedback
+        fields = ['comment', 'rating']
+
+    def get_rating(self, obj):
+        if obj.rating == 1:
+            return '1 star'
+        return f'{obj.rating} stars'

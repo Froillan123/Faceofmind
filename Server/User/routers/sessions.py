@@ -4,7 +4,7 @@ from typing import List
 from datetime import datetime
 from database import get_db
 from models import Session as SessionModel, User, EmotionDetection, FacialData, VoiceData, WellnessSuggestion, Feedback
-from schemas import SessionCreate, SessionResponse, SessionWithDetections, FeedbackCreate, FeedbackResponse
+from schemas import SessionCreate, SessionResponse, SessionWithDetections, FeedbackCreate, FeedbackResponse, EmotionDetectionWithData, FacialDataResponse, VoiceDataResponse, WellnessSuggestionResponse
 from dependencies import get_current_active_user, get_current_user
 from config import settings
 import requests
@@ -250,4 +250,45 @@ def get_feedback(session_id: int, db: Session = Depends(get_db), current_user: U
     ).first()
     if not feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
-    return feedback 
+    return feedback
+
+
+@router.get("/{session_id}/history", response_model=SessionWithDetections)
+def get_session_history(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get a session with all related emotion detections, facial data, voice data, and wellness suggestions."""
+    session = db.query(SessionModel).filter(
+        SessionModel.id == session_id,
+        SessionModel.user_id == current_user.id
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    detections = db.query(EmotionDetection).filter(EmotionDetection.session_id == session.id).all()
+    detection_with_data = []
+    for det in detections:
+        facial_data_orm = db.query(FacialData).filter(FacialData.detection_id == det.id).all()
+        voice_data_orm = db.query(VoiceData).filter(VoiceData.detection_id == det.id).all()
+        wellness_suggestions_orm = db.query(WellnessSuggestion).filter(WellnessSuggestion.detection_id == det.id).all()
+        facial_data = [FacialDataResponse.from_orm(fd) for fd in facial_data_orm]
+        voice_data = [VoiceDataResponse.from_orm(vd) for vd in voice_data_orm]
+        wellness_suggestions = [WellnessSuggestionResponse.from_orm(ws) for ws in wellness_suggestions_orm]
+        detection_with_data.append(EmotionDetectionWithData(
+            id=det.id,
+            session_id=det.session_id,
+            timestamp=det.timestamp,
+            facial_data=facial_data,
+            voice_data=voice_data,
+            wellness_suggestions=wellness_suggestions
+        ))
+
+    return SessionWithDetections(
+        id=session.id,
+        user_id=session.user_id,
+        start_time=session.start_time,
+        end_time=session.end_time,
+        emotion_detections=detection_with_data
+    ) 
