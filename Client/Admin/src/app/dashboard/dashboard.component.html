@@ -142,10 +142,6 @@
         </div>
       </div>
       <div class="users-table-container">
-        <div class="active-users-summary" style="margin-bottom: 1rem; padding: 1rem; background: #f0f9ff; border-radius: 0.5rem; border-left: 4px solid #10b981;">
-          <i class="fas fa-users" style="color: #10b981; margin-right: 0.5rem;"></i>
-          <strong>{{ activeUsersCount || 0 }}</strong> users currently active (logged in)
-        </div>
         <table class="styled-table">
           <thead>
             <tr>
@@ -232,22 +228,26 @@
         <table class="styled-table">
           <thead>
             <tr>
-              <th>User</th>
-              <th>Type</th>
-              <th>Message</th>
-              <th>Date</th>
+              <th>Comment</th>
+              <th>Rating</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let feedback of dummyFeedback">
-              <td>{{ feedback.user }}</td>
+            <tr *ngFor="let feedback of feedbackList">
+              <td>{{ feedback.comment }}</td>
               <td>
-                <span class="badge" [ngClass]="{'badge-feedback': feedback.type === 'Feedback', 'badge-complaint': feedback.type === 'Complaint'}">
-                  {{ feedback.type }}
-                </span>
+                <ng-container *ngFor="let star of [1,2,3,4,5]">
+                  <i class="fa"
+                    [ngClass]="star <= getStarCount(feedback.rating) ? 'fa-star' : 'fa-star-o'"
+                    [style.color]="isDarkMode ? '#fbbf24' : '#f59e42'"
+                    style="font-size: 1.2rem; margin-right: 2px;"
+                  ></i>
+                </ng-container>
+                <span style="margin-left: 0.5em; color: var(--text-light, #888); font-size: 0.98em;">({{ feedback.rating }})</span>
               </td>
-              <td>{{ feedback.message }}</td>
-              <td>{{ feedback.date }}</td>
+            </tr>
+            <tr *ngIf="feedbackList.length === 0">
+              <td colspan="2" style="text-align:center; color:#888;">No feedback found.</td>
             </tr>
           </tbody>
         </table>

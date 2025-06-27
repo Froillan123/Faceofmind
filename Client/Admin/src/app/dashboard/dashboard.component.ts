@@ -138,12 +138,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ];
 
   // Dummy data for Feedback & Complaints
-  dummyFeedback = [
-    { user: 'John Doe', type: 'Feedback', message: 'Great platform!', date: '2024-05-12' },
-    { user: 'Jane Smith', type: 'Complaint', message: 'Login was slow.', date: '2024-05-13' },
-    { user: 'Alice Brown', type: 'Feedback', message: 'Love the new features.', date: '2024-05-14' },
-    { user: 'Bob Lee', type: 'Complaint', message: 'App crashed once.', date: '2024-05-15' },
-  ];
+  feedbackList: { comment: string; rating: string }[] = [];
 
   // Dummy data for Revenue
   dummyRevenue = [
@@ -471,6 +466,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.usersPage = 1;
       this.fetchUsers();
     }
+    if (section === 'feedback') {
+      this.fetchFeedback();
+    }
   }
 
   async fetchUsers(): Promise<void> {
@@ -624,5 +622,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } else {
       document.querySelector('html')?.setAttribute('data-theme', 'light');
     }
+  }
+
+  fetchFeedback() {
+    this.http.get<{ comment: string; rating: string }[]>('/api/feedback-list/').subscribe({
+      next: (data) => {
+        this.feedbackList = data;
+      },
+      error: (err) => {
+        this.feedbackList = [];
+      }
+    });
+  }
+
+  // Helper to extract star count from rating string
+  getStarCount(rating: string): number {
+    const num = parseInt(rating);
+    if (!isNaN(num) && num >= 1 && num <= 5) {
+      return num;
+    }
+    // fallback: try to extract from '5 stars' or similar
+    const match = rating && rating.match(/(\d+)/);
+    if (match) {
+      const val = parseInt(match[1], 10);
+      if (!isNaN(val) && val >= 1 && val <= 5) return val;
+    }
+    return 0;
   }
 }
