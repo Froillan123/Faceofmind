@@ -5,6 +5,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from coreapi.models import User
 from coreapi.serializers import UserSerializer
+from coreapi.utils import get_active_users_from_redis, is_user_active_in_redis
 from django.db.models import Q
 
 class GetAllUsersView(APIView):
@@ -19,7 +20,7 @@ class GetAllUsersView(APIView):
         ],
         responses={200: UserSerializer(many=True)},
         operation_summary="Get All Users",
-        operation_description="Optionally filter by status, role, or email (partial match). Supports pagination with 'page' and 'page_size'."
+        operation_description="Optionally filter by status, role, or email (partial match). Supports pagination with 'page' and 'page_size'. Includes active user information from Redis."
     )
     def get(self, request):
         users = User.objects.all()
@@ -46,10 +47,21 @@ class GetAllUsersView(APIView):
         end = start + page_size
         users_page = users.order_by('-created_at')[start:end]
 
+        # Get active users from Redis
+        active_user_ids = get_active_users_from_redis()
+        
+        # Serialize users and add active status
         serializer = UserSerializer(users_page, many=True)
+        user_data = serializer.data
+        
+        # Add active status to each user
+        for user in user_data:
+            user['is_active_in_redis'] = user['id'] in active_user_ids
+        
         return Response({
-            'results': serializer.data,
+            'results': user_data,
             'total': total_count,
             'page': page,
-            'page_size': page_size
+            'page_size': page_size,
+            'active_users_count': len(active_user_ids)
         }, status=200) 

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User, UserStatus
 from schemas import UserCreate, UserResponse, LoginRequest, TokenResponse, RefreshTokenRequest
-from auth import verify_password, get_password_hash, create_access_token, create_refresh_token, get_user_from_refresh_token
+from auth import verify_password, get_password_hash, create_access_token, create_refresh_token, get_user_from_refresh_token, store_jwt_in_redis, remove_jwt_from_redis
 from dependencies import get_current_user
 from datetime import timedelta
 from otp import generate_otp, store_otp, verify_otp
@@ -12,8 +12,11 @@ from email.mime.text import MIMEText
 from config import settings
 import asyncio
 from fastapi import BackgroundTasks
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+security = HTTPBearer()
 
 
 def send_otp_email(email: str, otp: str):
@@ -64,11 +67,14 @@ def register(user_data: UserCreate, background_tasks: BackgroundTasks, db: Sessi
         loop.run_until_complete(store_otp(user_data.email, otp))
     background_tasks.add_task(send_otp_email, user_data.email, otp)
     
-    return db_user
+    return {
+        "message": "User registered successfully. An OTP has been sent to your email for verification.",
+        "user": db_user
+    }
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(login_data: LoginRequest, db: Session = Depends(get_db)):
+async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     """Login user and return access token."""
     # Find user by email
     user = db.query(User).filter(User.email == login_data.email).first()
@@ -85,11 +91,25 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
             detail="Incorrect email or password"
         )
     
+    # Check if user is suspended
+    if user.status == UserStatus.SUSPENDED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been suspended. Contact the administrator to see if you violated terms and conditions."
+        )
+
     # Check if user is active
     if user.status != UserStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Account is not active. Please contact administrator."
+            detail="Account is not active. Please verify your email."
+        )
+    
+    # Check if user is only 'user' role
+    if user.role != 'user':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only users can log in from this portal."
         )
     
     # Create access token
@@ -98,6 +118,9 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
         data={"sub": str(user.id), "email": user.email, "role": user.role},
         expires_delta=access_token_expires
     )
+    
+    # Store JWT in Redis
+    await store_jwt_in_redis(access_token, str(user.id), 30 * 60)
     
     return {
         "access_token": access_token,
@@ -143,3 +166,10 @@ async def verify_otp_endpoint(email: str = Body(...), otp: str = Body(...), db: 
     db.commit()
     db.refresh(user)
     return {"message": "OTP verified, account activated", "user": user} 
+
+
+@router.post("/logout")
+async def logout(credentials: HTTPAuthorizationCredentials = Depends(security), current_user: User = Depends(get_current_user)):
+    token = credentials.credentials
+    await remove_jwt_from_redis(token, str(current_user.id))
+    return {"message": "Successfully logged out."} 

@@ -1,32 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../services/auth.service';
+import { WebSocketService, AnalyticsData } from '../services/websocket.service';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartType } from 'chart.js';
 import { catchError, finalize } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { of, Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
-
-interface AnalyticsData {
-  labels: string[];
-  data_all: number[];
-  data_admin: number[];
-  data_professional: number[];
-  data_user: number[];
-  total_users: number;
-  new_users: number;
-  admin_count: number;
-  professional_count: number;
-  regular_count: number;
-  start_date: string;
-  end_date: string;
-  period: string;
-  group_by: string;
-}
 
 @Component({
   selector: 'app-dashboard',
@@ -35,11 +19,12 @@ interface AnalyticsData {
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   analytics: AnalyticsData | null = null;
   loading = true;
   error = '';
   fetching = false;
+  wsConnected = false;
 
   filter: 'week' | 'month' | 'year' = 'week';
   chartType: ChartType = 'line';
@@ -131,6 +116,7 @@ export class DashboardComponent implements OnInit {
   usersTotal = 0;
   usersPage = 1;
   usersPageSize = 15;
+  activeUsersCount = 0;
 
   // User filter state
   usersFilter = { query: '', role: '' };
@@ -226,18 +212,28 @@ export class DashboardComponent implements OnInit {
   adminName = 'Admin User'; // You can set this dynamically if you have user info
   logoutHover = false;
 
+  // WebSocket subscriptions
+  private wsSubscriptions: Subscription[] = [];
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private wsService: WebSocketService
   ) {}
 
   ngOnInit(): void {
+    // Check authentication first
     if (!this.authService.isLoggedIn()) {
+      console.log('User not logged in, redirecting to login');
       this.router.navigate(['/']);
       return;
     }
+
+    // Set up WebSocket and fetch data
+    this.setupWebSocket();
     this.fetchAllTimeCounts();
+    
     // On login, fetch all analytics if not cached
     const cacheWeek = localStorage.getItem('analytics_week');
     const cacheMonth = localStorage.getItem('analytics_month');
@@ -247,11 +243,11 @@ export class DashboardComponent implements OnInit {
     } else {
       this.fetchAnalytics();
     }
+    
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
       this.isDarkMode = savedTheme === 'dark';
     } else {
-      // Check system preference
       this.isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     this.applyTheme();
@@ -260,37 +256,96 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+    // Clean up WebSocket subscriptions
+    this.wsSubscriptions.forEach(sub => sub.unsubscribe());
+    this.wsService.destroy();
+  }
+
+  private setupWebSocket(): void {
+    // Subscribe to WebSocket analytics updates
+    this.wsSubscriptions.push(
+      this.wsService.analytics$.subscribe(data => {
+        if (data) {
+          this.processAnalyticsData(data);
+          this.loading = false;
+          this.fetching = false;
+        }
+      })
+    );
+
+    // Subscribe to connection status
+    this.wsSubscriptions.push(
+      this.wsService.connectionStatus$.subscribe(connected => {
+        this.wsConnected = connected;
+        if (!connected && this.loading) {
+          // Fallback to HTTP if WebSocket is not available
+          this.fetchAnalytics();
+        }
+      })
+    );
+
+    // Subscribe to notifications
+    this.wsSubscriptions.push(
+      this.wsService.notifications$.subscribe(message => {
+        this.showToast(message, 'success');
+      })
+    );
+
+    // Subscribe to errors
+    this.wsSubscriptions.push(
+      this.wsService.errors$.subscribe(error => {
+        if (error) {
+          console.error('WebSocket error:', error);
+          // Fallback to HTTP on WebSocket errors
+          if (this.loading) {
+            this.fetchAnalytics();
+          }
+        }
+      })
+    );
+  }
+
   setFilter(filter: 'week' | 'month' | 'year'): void {
     if (this.filter !== filter) {
       this.filter = filter;
-      this.fetchAnalytics();
+      this.loading = true;
+      
+      // Try WebSocket first, fallback to HTTP
+      if (this.wsConnected) {
+        this.wsService.requestAnalytics(filter);
+      } else {
+        this.fetchAnalytics();
+      }
     }
   }
 
   fetchAnalytics(): void {
-    if (this.fetching) return; // Don't double-fetch
+    if (this.fetching) return;
     this.error = '';
     const cacheKey = `analytics_${this.filter}`;
     const cached = localStorage.getItem(cacheKey);
     let usedCached = false;
+    
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
         if (parsed && parsed.timestamp && parsed.data) {
-            this.processAnalyticsData(parsed.data);
+          this.processAnalyticsData(parsed.data);
           usedCached = true;
         }
       } catch (e) {}
     }
-    this.loading = !usedCached; // Only show loading if no cache
-    // Always fetch latest in background
+    
+    this.loading = !usedCached;
     this.fetching = true;
+    
     this.http.get<any>(`/api/user-analytics/?period=${this.filter}`).toPromise().then((data) => {
       if (data) localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data }));
       this.processAnalyticsData(data);
     }).catch((err) => {
       if (!usedCached) {
-      this.error = 'Failed to load analytics. Please try again.';
+        this.error = 'Failed to load analytics. Please try again.';
       }
     }).finally(() => {
       this.loading = false;
@@ -382,7 +437,27 @@ export class DashboardComponent implements OnInit {
   }
 
   logout(): void {
-    // Only clear analytics caches, not theme
+    // Disconnect WebSocket before logout
+    this.wsService.disconnect();
+    
+    const token = this.authService.getToken();
+    if (token) {
+      this.http.post('/api/admin-logout/', {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).subscribe({
+        next: () => {
+          this.finishLogout();
+        },
+        error: () => {
+          this.finishLogout();
+        }
+      });
+    } else {
+      this.finishLogout();
+    }
+  }
+
+  private finishLogout() {
     ['week', 'month', 'year'].forEach(period => {
       localStorage.removeItem(`analytics_${period}`);
     });
@@ -409,6 +484,7 @@ export class DashboardComponent implements OnInit {
       this.usersTotal = data.total;
       this.usersPage = data.page;
       this.usersPageSize = data.page_size;
+      this.activeUsersCount = data.active_users_count;
     } catch (err) {
       this.users = [];
       this.usersTotal = 0;
@@ -516,16 +592,24 @@ export class DashboardComponent implements OnInit {
     ['week', 'month', 'year'].forEach(period => {
       localStorage.removeItem(`analytics_${period}`);
     });
-    // Fetch all analytics in one call
-    this.http.get<any>('/api/all-user-analytics/').toPromise().then((allData) => {
-      if (allData.week) localStorage.setItem('analytics_week', JSON.stringify({ timestamp: Date.now(), data: allData.week }));
-      if (allData.month) localStorage.setItem('analytics_month', JSON.stringify({ timestamp: Date.now(), data: allData.month }));
-      if (allData.year) localStorage.setItem('analytics_year', JSON.stringify({ timestamp: Date.now(), data: allData.year }));
-      // Re-fetch current filter's analytics
-      this.fetchAnalytics();
-    }).finally(() => {
-      this.fetching = false;
-    });
+    
+    // Try WebSocket first, fallback to HTTP
+    if (this.wsConnected) {
+      // Request all periods via WebSocket
+      ['week', 'month', 'year'].forEach(period => {
+        this.wsService.requestAnalytics(period as any);
+      });
+    } else {
+      // Fallback to HTTP
+      this.http.get<any>('/api/all-user-analytics/').toPromise().then((allData) => {
+        if (allData.week) localStorage.setItem('analytics_week', JSON.stringify({ timestamp: Date.now(), data: allData.week }));
+        if (allData.month) localStorage.setItem('analytics_month', JSON.stringify({ timestamp: Date.now(), data: allData.month }));
+        if (allData.year) localStorage.setItem('analytics_year', JSON.stringify({ timestamp: Date.now(), data: allData.year }));
+        this.fetchAnalytics();
+      }).finally(() => {
+        this.fetching = false;
+      });
+    }
   }
 
   toggleDarkMode() {

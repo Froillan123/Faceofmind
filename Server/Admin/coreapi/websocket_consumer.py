@@ -1,36 +1,79 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+import json
+from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from django.core.cache import cache
+from coreapi.models import User
 from django.utils.timezone import now
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
-from coreapi.models import User
-from django.core.cache import cache
-from django.db.models import Count, Q
-import json
 
-class UserAnalyticsView(APIView):
-    permission_classes = [AllowAny]
+class AnalyticsConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        # Accept the connection
+        await self.accept()
+        
+        # Add to analytics group
+        await self.channel_layer.group_add("analytics", self.channel_name)
+        
+        # Send initial data
+        await self.send_initial_analytics()
     
-    def get(self, request):
-        period = request.GET.get('period', 'week')  # week, month, year, all
+    async def disconnect(self, close_code):
+        # Remove from analytics group
+        await self.channel_layer.group_discard("analytics", self.channel_name)
+    
+    async def receive(self, text_data):
+        """Handle incoming messages from client"""
+        try:
+            data = json.loads(text_data)
+            message_type = data.get('type')
+            
+            if message_type == 'request_analytics':
+                period = data.get('period', 'week')
+                await self.send_analytics_update(period)
+            elif message_type == 'ping':
+                await self.send(text_data=json.dumps({'type': 'pong'}))
+                
+        except json.JSONDecodeError:
+            await self.send(text_data=json.dumps({
+                'type': 'error',
+                'message': 'Invalid JSON format'
+            }))
+    
+    async def send_initial_analytics(self):
+        """Send initial analytics data on connection"""
+        analytics_data = await self.get_analytics_data('week')
+        await self.send(text_data=json.dumps({
+            'type': 'analytics_update',
+            'data': analytics_data
+        }))
+    
+    async def send_analytics_update(self, period):
+        """Send analytics update for specific period"""
+        analytics_data = await self.get_analytics_data(period)
+        await self.send(text_data=json.dumps({
+            'type': 'analytics_update',
+            'period': period,
+            'data': analytics_data
+        }))
+    
+    @database_sync_to_async
+    def get_analytics_data(self, period):
+        """Get analytics data from database"""
         today = now().date()
         
-        # Cache key for this specific request
+        # Check cache first
         cache_key = f"analytics_{period}_{today}"
         cached_data = cache.get(cache_key)
         
         if cached_data:
-            return Response(cached_data)
+            return cached_data
         
-        # Optimized database queries with select_related and prefetch_related
+        # Get data from database
         all_users = User.objects.all()
-        admin_users = all_users.filter(role='admin')
-        professional_users = all_users.filter(role='professional')
-        user_users = all_users.filter(role='user')
-
+        
         if period == 'all':
-            # Use aggregation for better performance
+            from django.db.models import Count, Q
             counts = all_users.aggregate(
                 total=Count('id'),
                 admin_count=Count('id', filter=Q(role='admin')),
@@ -45,12 +88,16 @@ class UserAnalyticsView(APIView):
                 'regular_count': counts['regular_count'],
                 'period': 'all'
             }
-            
-            # Cache for 5 minutes
-            cache.set(cache_key, result, 300)
-            return Response(result)
-
-        # Date ranges
+        else:
+            # Get time-based analytics
+            result = self._get_time_based_analytics(all_users, period, today)
+        
+        # Cache the result
+        cache.set(cache_key, result, 300)
+        return result
+    
+    def _get_time_based_analytics(self, all_users, period, today):
+        """Get time-based analytics data"""
         if period == 'week':
             start_date = today - timedelta(days=today.weekday())
             end_date = start_date + timedelta(days=6)
@@ -63,13 +110,12 @@ class UserAnalyticsView(APIView):
             
             for i in range(7):
                 day = start_date + timedelta(days=i)
-                # Use optimized queries with date filtering
                 day_users = all_users.filter(created_at__date=day)
                 data_all.append(day_users.count())
                 data_admin.append(day_users.filter(role='admin').count())
                 data_professional.append(day_users.filter(role='professional').count())
                 data_user.append(day_users.filter(role='user').count())
-
+        
         elif period == 'month':
             start_date = today.replace(day=1)
             end_date = (start_date + relativedelta(months=1)) - timedelta(days=1)
@@ -85,8 +131,6 @@ class UserAnalyticsView(APIView):
             
             while current_date <= end_date and week_num < 4:
                 week_end = min(current_date + timedelta(days=6), end_date)
-                
-                # Optimized week queries
                 week_users = all_users.filter(
                     created_at__date__gte=current_date,
                     created_at__date__lte=week_end
@@ -99,7 +143,7 @@ class UserAnalyticsView(APIView):
                 
                 current_date = week_end + timedelta(days=1)
                 week_num += 1
-
+        
         elif period == 'year':
             start_date = today.replace(month=1, day=1)
             end_date = today.replace(month=12, day=31)
@@ -114,8 +158,6 @@ class UserAnalyticsView(APIView):
             for month in range(12):
                 month_start = start_date.replace(month=month+1, day=1)
                 month_end = (month_start + relativedelta(months=1)) - timedelta(days=1)
-                
-                # Optimized month queries
                 month_users = all_users.filter(
                     created_at__date__gte=month_start,
                     created_at__date__lte=month_end
@@ -125,8 +167,12 @@ class UserAnalyticsView(APIView):
                 data_admin[month] = month_users.filter(role='admin').count()
                 data_professional[month] = month_users.filter(role='professional').count()
                 data_user[month] = month_users.filter(role='user').count()
-
-        # Role breakdown for the period
+        
+        # Calculate totals
+        admin_users = all_users.filter(role='admin')
+        professional_users = all_users.filter(role='professional')
+        user_users = all_users.filter(role='user')
+        
         admin_count = admin_users.filter(created_at__date__lte=end_date).count()
         professional_count = professional_users.filter(created_at__date__lte=end_date).count()
         regular_count = user_users.filter(created_at__date__lte=end_date).count()
@@ -135,8 +181,8 @@ class UserAnalyticsView(APIView):
             created_at__date__gte=start_date,
             created_at__date__lte=end_date
         ).count()
-
-        result = {
+        
+        return {
             'labels': labels,
             'data_all': data_all,
             'data_admin': data_admin,
@@ -151,7 +197,11 @@ class UserAnalyticsView(APIView):
             'end_date': str(end_date),
             'period': period,
         }
-        
-        # Cache for 5 minutes
-        cache.set(cache_key, result, 300)
-        return Response(result) 
+    
+    async def analytics_notification(self, event):
+        """Handle analytics notifications from other parts of the system"""
+        await self.send(text_data=json.dumps({
+            'type': 'analytics_notification',
+            'message': event['message'],
+            'data': event.get('data', {})
+        })) 

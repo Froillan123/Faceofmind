@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from coreapi.models import User
+from coreapi.utils import send_analytics_notification, invalidate_analytics_cache
 
 class UpdateUserStatusView(APIView):
     permission_classes = [AllowAny]
@@ -32,8 +33,24 @@ class UpdateUserStatusView(APIView):
             return Response({'error': 'Invalid user id or status.'}, status=400)
         try:
             user = User.objects.get(id=user_id)
+            old_status = user.status
             user.status = new_status
             user.save()
+            
+            # Send real-time notification
+            send_analytics_notification(
+                f"User {user.email} status changed from {old_status} to {new_status}",
+                {
+                    "user_id": user_id,
+                    "old_status": old_status,
+                    "new_status": new_status,
+                    "action": "status_update"
+                }
+            )
+            
+            # Invalidate analytics cache since user data changed
+            invalidate_analytics_cache()
+            
             return Response({'message': 'User status updated successfully.'}, status=200)
         except User.DoesNotExist:
             return Response({'error': 'User not found.'}, status=404) 

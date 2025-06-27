@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
@@ -24,4 +24,27 @@ def add_comment(post_id: int, comment: CommunityCommentCreate, db: Session = Dep
     db.add(db_comment)
     db.commit()
     db.refresh(db_comment)
-    return db_comment 
+    return db_comment
+
+@router.put("/{post_id}/comments/{comment_id}", response_model=CommunityCommentResponse)
+def edit_comment(post_id: int, comment_id: int, comment_update: CommunityCommentCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_comment = db.query(CommunityComment).filter(CommunityComment.id == comment_id, CommunityComment.post_id == post_id).first()
+    if not db_comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if db_comment.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    db_comment.content = comment_update.content
+    db.commit()
+    db.refresh(db_comment)
+    return db_comment
+
+@router.delete("/{post_id}/comments/{comment_id}")
+def delete_comment(post_id: int, comment_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_comment = db.query(CommunityComment).filter(CommunityComment.id == comment_id, CommunityComment.post_id == post_id).first()
+    if not db_comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if db_comment.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    db.delete(db_comment)
+    db.commit()
+    return {"message": "Comment deleted successfully"} 

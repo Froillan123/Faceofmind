@@ -874,3 +874,54 @@ body, .dashboard-container, .dashboard-header h1, .section-title, .count-card h2
 .user-search-input:focus {
   border: 1.5px solid var(--primary, #6366f1);
 }
+
+/* Active user indicators */
+.active-indicator, .inactive-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.active-indicator {
+  color: #10b981;
+}
+
+.inactive-indicator {
+  color: #9ca3af;
+}
+
+/* Active user row styling */
+.active-user-row {
+  background: rgba(16, 185, 129, 0.05) !important;
+  border-left: 3px solid #10b981 !important;
+}
+
+.active-user-row:hover {
+  background: rgba(16, 185, 129, 0.1) !important;
+}
+
+/* Active users summary */
+.active-users-summary {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
+  color: #0c4a6e;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .active-users-summary {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid #334155;
+  color: #e2e8f0;
+}
+
+/* Enhanced active user row for dark mode */
+[data-theme="dark"] .active-user-row {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-left: 3px solid #10b981 !important;
+}
+
+[data-theme="dark"] .active-user-row:hover {
+  background: rgba(16, 185, 129, 0.15) !important;
+}

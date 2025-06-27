@@ -33,4 +33,8 @@ export class AuthService {
       localStorage.removeItem('refresh');
     }
   }
+
+  getToken(): string | null {
+    return isBrowser() ? localStorage.getItem('access') : null;
+  }
 }
