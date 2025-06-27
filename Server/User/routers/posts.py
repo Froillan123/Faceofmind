@@ -21,7 +21,8 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=CommunityPostResponse)
 def create_post(post: CommunityPostCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_post = CommunityPost(user_id=current_user.id, **post.dict())
+    post_data = {k: v for k, v in post.dict().items() if v is not None}
+    db_post = CommunityPost(user_id=current_user.id, **post_data)
     db.add(db_post)
     db.commit()
     db.refresh(db_post)

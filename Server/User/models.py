@@ -116,7 +116,11 @@ class CommunityPost(Base):
 
     # Relationships
     user = relationship("User", back_populates="community_posts")
-    comments = relationship("CommunityComment", back_populates="post")
+    comments = relationship(
+        "CommunityComment",
+        back_populates="post",
+        cascade="all, delete-orphan"
+    )
 
 
 class CommunityComment(Base):
