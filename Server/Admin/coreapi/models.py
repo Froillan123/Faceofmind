@@ -47,7 +47,6 @@ class FacialData(models.Model):
 
 class VoiceData(models.Model):
     detection = models.ForeignKey(EmotionDetection, on_delete=models.CASCADE)
-    audio_path = models.TextField()
     content = models.TextField()
 
     class Meta:
