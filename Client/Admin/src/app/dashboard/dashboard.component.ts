@@ -555,7 +555,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.closeEditUser();
         this.fetchUsers();
-        this.showToast('User status updated successfully.', 'success');
       },
       error: (err) => {
         console.error('User status update error:', err);

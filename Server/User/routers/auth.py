@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, UserStatus
-from schemas import UserCreate, UserResponse, LoginRequest, TokenResponse, RefreshTokenRequest
+from schemas import UserCreate, UserResponse, LoginRequest, TokenResponse, RefreshTokenRequest, RegisterResponse
 from auth import verify_password, get_password_hash, create_access_token, create_refresh_token, get_user_from_refresh_token, store_jwt_in_redis, remove_jwt_from_redis
 from dependencies import get_current_user
 from datetime import timedelta
@@ -30,7 +30,7 @@ def send_otp_email(email: str, otp: str):
         server.sendmail(settings.smtp_email, [email], msg.as_string())
 
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/register", response_model=RegisterResponse)
 def register(user_data: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Register a new user."""
     # Check if user already exists
@@ -172,4 +172,4 @@ async def verify_otp_endpoint(email: str = Body(...), otp: str = Body(...), db: 
 async def logout(credentials: HTTPAuthorizationCredentials = Depends(security), current_user: User = Depends(get_current_user)):
     token = credentials.credentials
     await remove_jwt_from_redis(token, str(current_user.id))
-    return {"message": "Successfully logged out."} 
+    return {"message": "Successfully logged out."}

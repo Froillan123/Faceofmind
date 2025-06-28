@@ -22,6 +22,11 @@ class UserUpdate(BaseModel):
     status: Optional[UserStatus] = None
 
 
+class UserProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
+
 class UserResponse(UserBase):
     id: int
     role: str
@@ -31,6 +36,14 @@ class UserResponse(UserBase):
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
+
+    class Config:
+        orm_mode = True
+
+
+class RegisterResponse(BaseModel):
+    message: str
+    user: UserResponse
 
     class Config:
         orm_mode = True
@@ -92,7 +105,6 @@ class FacialDataResponse(FacialDataBase):
 
 # Voice Data schemas
 class VoiceDataBase(BaseModel):
-    audio_path: str
     content: str
 
 
@@ -241,7 +253,6 @@ class UserWithSessions(UserResponse):
 
 class EmotionDetectionWithData(EmotionDetectionResponse):
     facial_data: List[FacialDataResponse] = []
-    voice_data: List[VoiceDataResponse] = []
     wellness_suggestions: List[WellnessSuggestionResponse] = []
 
 
