@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY")
     openrouter_api_url: str = os.getenv("OPENROUTER_API_URL")
 
+    # Gemini API (hardcoded)
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY")
+    gemini_api_url: str = os.getenv("GEMINI_API_URL")
+
     class Config:
         env_file = ".env"
         case_sensitive = False

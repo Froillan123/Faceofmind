@@ -10,6 +10,7 @@ from config import settings
 import requests
 import json
 from pydantic import BaseModel
+import google.generativeai as genai # Import the gemini library
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -17,6 +18,17 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 class ProcessEmotionRequest(BaseModel):
     emotion: str
     voice_content: str
+
+# Dictionary for emotion colors (can be moved to a config or constants file if preferred)
+EMOTION_COLORS = {
+    "happy": "#FFFF00",  # Yellow
+    "sad": "#0000FF",    # Blue
+    "angry": "#FF0000",  # Red
+    "fearful": "#800080", # Purple
+    "surprised": "#FFA500", # Orange
+    "disgusted": "#008000", # Green
+    "neutral": "#A9A9A9" # DarkGray
+}
 
 
 @router.post("/", response_model=SessionResponse)
@@ -30,11 +42,9 @@ def create_session(
         user_id=current_user.id,
         start_time=datetime.utcnow()
     )
-    
     db.add(db_session)
     db.commit()
     db.refresh(db_session)
-    
     return db_session
 
 
@@ -46,11 +56,9 @@ def get_user_sessions(
     current_user: User = Depends(get_current_active_user)
 ):
     """Get all sessions for the current user."""
-    sessions = db.query(SessionModel).filter(
+    return db.query(SessionModel).filter(
         SessionModel.user_id == current_user.id
     ).offset(skip).limit(limit).all()
-    
-    return sessions
 
 
 @router.get("/{session_id}", response_model=SessionResponse)
@@ -64,13 +72,8 @@ def get_session(
         SessionModel.id == session_id,
         SessionModel.user_id == current_user.id
     ).first()
-    
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
-        )
-    
+        raise HTTPException(status_code=404, detail="Session not found")
     return session
 
 
@@ -85,24 +88,13 @@ def end_session(
         SessionModel.id == session_id,
         SessionModel.user_id == current_user.id
     ).first()
-    
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
-        )
-    
+        raise HTTPException(status_code=404, detail="Session not found")
     if session.end_time:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Session already ended"
-        )
-    
+        raise HTTPException(status_code=400, detail="Session already ended")
     session.end_time = datetime.utcnow()
     db.commit()
-    db.refresh(session)
-    
-    return {"message": "Session ended successfully", "session": session}
+    return {"message": "Session ended successfully"}
 
 
 @router.delete("/{session_id}")
@@ -116,16 +108,10 @@ def delete_session(
         SessionModel.id == session_id,
         SessionModel.user_id == current_user.id
     ).first()
-    
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
-        )
-    
+        raise HTTPException(status_code=404, detail="Session not found")
     db.delete(session)
     db.commit()
-    
     return {"message": "Session deleted successfully"}
 
 
@@ -136,107 +122,165 @@ def process_emotion(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    # 1. Insert EmotionDetection
+    """Process emotion data and generate wellness suggestions."""
+    # 1. Store detection data
     detection = EmotionDetection(session_id=session_id)
     db.add(detection)
     db.commit()
     db.refresh(detection)
 
-    # 2. Insert FacialData
-    facial = FacialData(detection_id=detection.id, emotion=req.emotion)
+    # Determine emotion color for the response
+    calculated_emotion_color = EMOTION_COLORS.get(req.emotion.lower(), "#A9A9A9") # Default to dark gray
+
+    # 2. Store facial data (emotion_color is not stored in DB here)
+    facial = FacialData(
+        detection_id=detection.id,
+        emotion=req.emotion,
+    )
     db.add(facial)
     db.commit()
-    db.refresh(facial)
+    db.refresh(facial) # Refresh to get auto-generated ID if needed for other relations
 
-    # 3. Insert VoiceData
+    # 3. Store voice data
     voice = VoiceData(detection_id=detection.id, content=req.voice_content)
     db.add(voice)
     db.commit()
-    db.refresh(voice)
+    db.refresh(voice) # Refresh to get auto-generated ID if needed
 
-    # 4. Call OpenRouter API with better error handling
-    suggestion_text = ""
-    
-    # Check if OpenRouter settings are configured
-    if not settings.openrouter_api_key or not settings.openrouter_api_url:
-        print("OpenRouter API not configured, using fallback response")
-        suggestion_text = f"Based on your {req.emotion} emotion and concerns about {req.voice_content[:30]}..., I understand you're going through a challenging time. Here are some suggestions: • Take deep breaths to calm your mind • Break down your goals into smaller steps • Remember that progress takes time and patience"
-    else:
-        try:
-            url = settings.openrouter_api_url
-            headers = {
-                "Authorization": f"Bearer {settings.openrouter_api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            # Compose the prompt for OpenRouter (OpenAI-compatible)
-            prompt = (
-                f"Given the following:\n"
-                f"- Detected facial emotion: {req.emotion}\n"
-                f"- User said: \"{req.voice_content}\"\n"
-                "Acknowledge the user's feelings and situation in your response. "
-                "Then, give a wellness suggestion that is directly related to both the emotion and the voice content. "
-                "Reply with:\n"
-                "1 short main topic sentence (max 15 words), and 3 short bullet points (max 12 words each). "
-                "Always use 'you' to address the user directly. Be concise and specific."
-            )
-            
-            payload = {
-                "model": "openai/gpt-4o",
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are a wellness assistant. Always keep your answers short, specific, and directly related to the user's emotion and statement."
-                    },
-                    {"role": "user", "content": prompt}
-                ],
-                "max_tokens": 128
-            }
-            
-            print(f"Making OpenRouter API call to: {url}")
-            print(f"Headers: {headers}")
-            print(f"Payload: {payload}")
-            
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
-            print(f"OpenRouter response status: {response.status_code}")
-            print(f"OpenRouter response headers: {response.headers}")
-            print(f"OpenRouter raw response: {response.text}")
-            
-            if response.status_code == 200:
-                try:
-                    data = response.json()
-                    print(f"OpenRouter API response: {data}")
-                    suggestion_text = data["choices"][0]["message"]["content"]
-                except (KeyError, IndexError, ValueError) as json_error:
-                    print(f"JSON parsing error: {json_error}")
-                    suggestion_text = f"I understand you're feeling {req.emotion}. Based on what you shared, here are some helpful suggestions: • Take a moment to breathe deeply • Focus on one small step at a time • Remember that challenges are opportunities for growth"
-            else:
-                print(f"OpenRouter API returned status {response.status_code}")
-                suggestion_text = f"I sense you're feeling {req.emotion} about your situation. Here are some gentle suggestions: • Practice self-compassion • Take breaks when needed • Celebrate small victories"
-                
-        except requests.exceptions.RequestException as req_error:
-            print(f"Request error: {req_error}")
-            suggestion_text = f"I understand you're experiencing {req.emotion} emotions. Here are some supportive suggestions: • Be kind to yourself • Take things one step at a time • Remember that it's okay to ask for help"
-        except Exception as e:
-            print(f"Unexpected error in OpenRouter call: {e}")
-            suggestion_text = f"Based on your {req.emotion} emotion, I want to support you. Here are some helpful tips: • Practice mindfulness • Set realistic expectations • Seek support when needed"
+    # 4. Generate wellness suggestion
+    suggestion_text = generate_wellness_response(
+        emotion=req.emotion,
+        content=req.voice_content,
+        db=db
+    )
 
-    # 5. Store WellnessSuggestion
+    # 5. Store suggestion
     suggestion = WellnessSuggestion(
         detection_id=detection.id,
         suggestion=suggestion_text
     )
     db.add(suggestion)
     db.commit()
-    db.refresh(suggestion)
+    db.refresh(suggestion) # Refresh to get auto-generated ID if needed
+
+    # The response should be structured for Flutter list display
+    # Assuming the suggestion_text is already in a bulleted format (e.g., "Intro. • Tip1 • Tip2")
+    # We need to parse it into a list for the response.
+    # We will split by "•" and strip whitespace.
+    parts = suggestion_text.split('•')
+    acknowledgment = parts[0].strip() if parts else ""
+    suggestions_list = [s.strip() for s in parts[1:] if s.strip()]
 
     return {
         "session_id": session_id,
-        "emotion_detection_id": detection.id,
-        "facial_emotion": req.emotion,
-        "voice_content": req.voice_content,
-        "wellness_suggestion": suggestion_text
+        "emotion": req.emotion,
+        "voice_content": req.voice_content, # Include the voice content from the request
+        "acknowledgment": acknowledgment,   # Acknowledgment part of the suggestion
+        "suggestions": suggestions_list,     # List of individual suggestions
+        "emotion_color": calculated_emotion_color
     }
+
+
+def generate_wellness_response(emotion: str, content: str, db: Session) -> str:
+    """Generate appropriate wellness response based on emotion and content."""
+    # First try Gemini API
+    if settings.gemini_api_key:
+        try:
+            genai.configure(api_key=settings.gemini_api_key)
+            return generate_with_gemini(emotion, content)
+        except Exception as e:
+            print(f"Gemini failed: {str(e)}")
+            if settings.openrouter_api_key:
+                try:
+                    return generate_with_openrouter(emotion, content)
+                except Exception as e_openrouter:
+                    print(f"OpenRouter failed: {str(e_openrouter)}")
+    elif settings.openrouter_api_key:
+        try:
+            return generate_with_openrouter(emotion, content)
+        except Exception as e:
+            print(f"OpenRouter failed: {str(e)}")
+    
+    # Final fallback to our curated responses
+    return get_curated_response(emotion, content)
+
+
+def generate_with_gemini(emotion: str, content: str) -> str:
+    """Generate response using Gemini API."""
+    prompt = f"""You are a compassionate mental health assistant. The user is feeling {emotion}.
+    
+User's words: "{content}"
+
+Provide:
+1. A brief (10-15 word) empathetic acknowledgment of their emotion
+2. Three (3) concise wellness suggestions (12 words max each) tailored to their specific situation
+3. Format as: "I hear you're feeling [emotion]. • Suggestion 1 • Suggestion 2 • Suggestion 3"
+
+Focus on practical, actionable advice suitable for their emotional state."""
+    
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
+
+
+def generate_with_openrouter(emotion: str, content: str) -> str:
+    """Generate response using OpenRouter API."""
+    headers = {
+        "Authorization": f"Bearer {settings.openrouter_api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    prompt = f"""As a mental health assistant, respond to a user feeling {emotion} who said:
+"{content}"
+
+Provide:
+1. A short (10-15 word) emotional validation
+2. Five (5) very brief wellness tips (12-15 words max each)
+3. Format as single paragraph with bullet points using '•' as the bullet character."""
+
+    payload = {
+        "model": "openai/gpt-4o",
+        "messages": [
+            {"role": "system", "content": "You are a compassionate wellness assistant. Be concise yet warm."},
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": 250 # Increased max_tokens to accommodate 5 suggestions
+    }
+    
+    response = requests.post(
+        settings.openrouter_api_url,
+        headers=headers,
+        json=payload,
+        timeout=10
+    )
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
+
+
+def get_curated_response(emotion: str, content: str) -> str:
+    """Curated fallback responses for each emotion."""
+    emotion = emotion.lower()
+    base_responses = {
+        "happy": "I'm glad you're feeling happy! • Savor this positive moment • Share your joy with others • Note what brought you this happiness",
+        "sad": "I hear you're feeling sad. • Be gentle with yourself • Reach out to someone you trust • This feeling will pass",
+        "angry": "Anger is a valid emotion. • Take deep breaths before reacting • Physical activity can help release • Consider the root cause calmly",
+        "fearful": "Fear can feel overwhelming. • Focus on your breathing • Break concerns into smaller pieces • You've handled hard things before",
+        "surprised": "Surprise can be unsettling. • Take a moment to process • Assess if this is positive/negative • Give yourself time to adjust",
+        "disgusted": "Disgust is a strong reaction. • Distance yourself if needed • Reflect on what triggered this • Practice self-care after exposure",
+        "neutral": "Neutral feelings are okay. • Check in with your body • Consider journaling your thoughts • Small pleasures can be grounding"
+    }
+    
+    # Special cases
+    if "cheat" in content.lower() or "betray" in content.lower():
+        return ("I hear your pain about betrayal. • Your feelings are valid • Consider talking to a trusted friend • Avoid impulsive decisions right now")
+    
+    if "stress" in content.lower() or "overwhelm" in content.lower():
+        return ("Stress feels heavy. • Prioritize one small thing first • 5-minute breaks help reset • You don't have to solve everything now")
+    
+    # Ensure curated response also uses the bullet format for consistency
+    return base_responses.get(emotion, 
+        "I want to support you. • Practice mindful breathing • Break challenges into steps • Remember progress isn't linear"
+    )
 
 
 @router.post("/{session_id}/feedback", response_model=FeedbackResponse)
@@ -246,7 +290,7 @@ def submit_feedback(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    # 1. Check session exists and belongs to user
+    """Submit feedback about a session."""
     session = db.query(SessionModel).filter(
         SessionModel.id == session_id,
         SessionModel.user_id == current_user.id
@@ -254,30 +298,21 @@ def submit_feedback(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if not session.end_time:
-        raise HTTPException(status_code=400, detail="Session is not ended yet")
-
-    # 2. Check if feedback already exists (optional, to prevent duplicates)
+        raise HTTPException(status_code=400, detail="Session not ended yet")
+    
+    # Check for existing feedback
     existing = db.query(Feedback).filter(Feedback.session_id == session_id).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Feedback already submitted for this session")
-
-    # 3. Create feedback
-    db_feedback = Feedback(session_id=session_id, comment=feedback.comment, rating=feedback.rating)
+        raise HTTPException(status_code=400, detail="Feedback already submitted")
+    
+    db_feedback = Feedback(
+        session_id=session_id,
+        comment=feedback.comment,
+        rating=feedback.rating
+    )
     db.add(db_feedback)
     db.commit()
-    db.refresh(db_feedback)
     return db_feedback
-
-
-@router.get("/{session_id}/feedback", response_model=FeedbackResponse)
-def get_feedback(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    feedback = db.query(Feedback).join(SessionModel).filter(
-        Feedback.session_id == session_id,
-        SessionModel.user_id == current_user.id
-    ).first()
-    if not feedback:
-        raise HTTPException(status_code=404, detail="Feedback not found")
-    return feedback
 
 
 @router.get("/{session_id}/history", response_model=SessionWithDetections)
@@ -286,7 +321,7 @@ def get_session_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get a session with all related emotion detections, facial data, voice data, and wellness suggestions."""
+    """Get complete session history with all related data."""
     session = db.query(SessionModel).filter(
         SessionModel.id == session_id,
         SessionModel.user_id == current_user.id
@@ -294,22 +329,56 @@ def get_session_history(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    detections = db.query(EmotionDetection).filter(EmotionDetection.session_id == session.id).all()
-    detection_with_data = []
+    detections = db.query(EmotionDetection).filter(
+        EmotionDetection.session_id == session.id
+    ).all()
+    
+    detection_data = []
     for det in detections:
-        facial_data_orm = db.query(FacialData).filter(FacialData.detection_id == det.id).all()
-        voice_data_orm = db.query(VoiceData).filter(VoiceData.detection_id == det.id).all()
-        wellness_suggestions_orm = db.query(WellnessSuggestion).filter(WellnessSuggestion.detection_id == det.id).all()
-        facial_data = [FacialDataResponse.from_orm(fd) for fd in facial_data_orm]
-        voice_data = [VoiceDataResponse.from_orm(vd) for vd in voice_data_orm]
-        wellness_suggestions = [WellnessSuggestionResponse.from_orm(ws) for ws in wellness_suggestions_orm]
-        detection_with_data.append(EmotionDetectionWithData(
+        facial = db.query(FacialData).filter(
+            FacialData.detection_id == det.id
+        ).first()
+        voice = db.query(VoiceData).filter(
+            VoiceData.detection_id == det.id
+        ).first()
+        wellness = db.query(WellnessSuggestion).filter(
+            WellnessSuggestion.detection_id == det.id
+        ).first()
+        
+        facial_response = None
+        if facial:
+            emotion_from_facial = facial.emotion.lower()
+            facial_emotion_color = EMOTION_COLORS.get(emotion_from_facial, "#A9A9A9")
+            facial_response = FacialDataResponse(
+                id=facial.id,
+                detection_id=facial.detection_id,
+                emotion=facial.emotion,
+                timestamp=facial.timestamp,
+                emotion_color=facial_emotion_color
+            )
+        
+        # Prepare wellness suggestion for history display
+        history_acknowledgment = ""
+        history_suggestions_list = []
+        if wellness and wellness.suggestion:
+            parts = wellness.suggestion.split('•')
+            history_acknowledgment = parts[0].strip() if parts else ""
+            history_suggestions_list = [s.strip() for s in parts[1:] if s.strip()]
+
+        detection_data.append(EmotionDetectionWithData(
             id=det.id,
             session_id=det.session_id,
             timestamp=det.timestamp,
-            facial_data=facial_data,
-            voice_data=voice_data,
-            wellness_suggestions=wellness_suggestions
+            facial_data=[facial_response] if facial_response else [],
+            voice_data=[VoiceDataResponse.from_orm(voice)] if voice else [],
+            wellness_suggestions=[WellnessSuggestionResponse(
+                id=wellness.id,
+                detection_id=wellness.detection_id,
+                timestamp=wellness.timestamp,
+                suggestion=wellness.suggestion, # Keep original suggestion for DB model, if it's there
+                acknowledgment=history_acknowledgment, # New field for acknowledgment
+                suggestions=history_suggestions_list # New field for list of suggestions
+            )] if wellness else []
         ))
 
     return SessionWithDetections(
@@ -317,5 +386,5 @@ def get_session_history(
         user_id=session.user_id,
         start_time=session.start_time,
         end_time=session.end_time,
-        emotion_detections=detection_with_data
-    ) 
+        emotion_detections=detection_data
+    )
