@@ -1,3 +1,4 @@
+# schemas.py
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime, date
@@ -80,7 +81,7 @@ class EmotionDetectionCreate(EmotionDetectionBase):
 class EmotionDetectionResponse(EmotionDetectionBase):
     id: int
     session_id: int
-    timestamp: datetime
+    timestamp: datetime # This remains as EmotionDetection has a timestamp
 
     class Config:
         orm_mode = True
@@ -98,7 +99,8 @@ class FacialDataCreate(FacialDataBase):
 class FacialDataResponse(FacialDataBase):
     id: int
     detection_id: int
-
+    # Removed timestamp: datetime
+    # Removed emotion_color: str -- this is a derived value, not a stored one
     class Config:
         orm_mode = True
 
@@ -133,6 +135,8 @@ class FeedbackCreate(FeedbackBase):
 class FeedbackResponse(FeedbackBase):
     id: int
     session_id: int
+    comment: str 
+    rating: int 
 
     class Config:
         orm_mode = True
@@ -150,6 +154,10 @@ class WellnessSuggestionCreate(WellnessSuggestionBase):
 class WellnessSuggestionResponse(WellnessSuggestionBase):
     id: int
     detection_id: int
+    # Removed timestamp: datetime
+    # Added for frontend display derived from the suggestion string
+    acknowledgment: str = ""
+    suggestions: List[str] = []
 
     class Config:
         orm_mode = True
@@ -252,24 +260,17 @@ class UserWithSessions(UserResponse):
 
 
 class EmotionDetectionWithData(EmotionDetectionResponse):
-    facial_data: List[FacialDataResponse] = []
-    wellness_suggestions: List[WellnessSuggestionResponse] = []
-
+    facial_data: Optional[FacialDataResponse] = None # Change to Optional singular
+    voice_data: Optional[VoiceDataResponse] = None # Change to Optional singular
+    wellness_suggestions: Optional[WellnessSuggestionResponse] = None # Change to Optional singular
+    # Add fields for direct display related to the detection
+    emotion_color: str = ""
+    facial_emotion: Optional[str] = None # To display the facial emotion easily
 
 class SessionWithDetections(SessionResponse):
     emotion_detections: List[EmotionDetectionWithData] = []
 
-
-class FeedbackCreate(BaseModel):
-    comment: str
-    rating: int  # 1-5
-
-
-class FeedbackResponse(BaseModel):
-    id: int
-    session_id: int
-    comment: str
-    rating: int
-
-    class Config:
-        orm_mode = True 
+# Your FeedbackCreate and FeedbackResponse were duplicated and inconsistent.
+# I've kept the one that matches your router's usage.
+# If Feedback is not directly linked to EmotionDetection, then your existing schema for it is fine.
+# I am assuming Feedback is for the entire session, not a specific detection within it.
