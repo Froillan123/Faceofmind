@@ -14,6 +14,7 @@ from pydantic import BaseModel
 import google.generativeai as genai
 from random import uniform
 from collections import defaultdict, Counter
+from zoneinfo import ZoneInfo  # Add this import
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -169,7 +170,8 @@ def get_diagnosis(
 ):
     """Aggregate user's emotion detections, classify intensity, and get diagnosis from Gemini."""
     # Determine time window
-    now = datetime.utcnow()
+    MANILA_TZ = ZoneInfo("Asia/Manila")
+    now = datetime.now(MANILA_TZ)
     if req.window == 'day':
         since = now.replace(hour=0, minute=0, second=0, microsecond=0)
     elif req.window == '3days':
@@ -181,18 +183,18 @@ def get_diagnosis(
     else:
         raise HTTPException(status_code=400, detail="Invalid window")
 
-    # Get all user's sessions in window
+    # Get all user's sessions (all time)
     sessions = db.query(SessionModel).filter(
-        SessionModel.user_id == current_user.id,
-        SessionModel.start_time >= since
+        SessionModel.user_id == current_user.id
     ).all()
     session_ids = [s.id for s in sessions]
     if not session_ids:
         return {"diagnosis": "No sessions in this window.", "emotion_tally": {}, "intensity_breakdown": {}}
 
-    # Get all emotion detections in these sessions
+    # Get all emotion detections in these sessions, but only those in the time window
     detections = db.query(EmotionDetection).filter(
-        EmotionDetection.session_id.in_(session_ids)
+        EmotionDetection.session_id.in_(session_ids),
+        EmotionDetection.timestamp >= since
     ).all()
     if not detections:
         return {"diagnosis": "No emotion detections in this window.", "emotion_tally": {}, "intensity_breakdown": {}}
@@ -288,8 +290,8 @@ def get_intensity_chart(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Return dominant emotion and intensity tally for each day in the window (default: current week, Mon-Sun)."""
-    now = datetime.utcnow()
+    MANILA_TZ = ZoneInfo("Asia/Manila")
+    now = datetime.now(MANILA_TZ)
     if window == 'day':
         since = now.replace(hour=0, minute=0, second=0, microsecond=0)
         days = [since.date()]
@@ -297,7 +299,6 @@ def get_intensity_chart(
         since = now - timedelta(days=3)
         days = [(since + timedelta(days=i)).date() for i in range(4)]
     elif window == 'week':
-        # Get current week's Monday
         monday = now - timedelta(days=now.weekday())
         days = [(monday + timedelta(days=i)).date() for i in range(7)]
         since = monday.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -308,18 +309,17 @@ def get_intensity_chart(
         raise HTTPException(status_code=400, detail="Invalid window")
 
     sessions = db.query(SessionModel).filter(
-        SessionModel.user_id == current_user.id,
-        SessionModel.start_time >= since
+        SessionModel.user_id == current_user.id
     ).all()
     session_ids = [s.id for s in sessions]
     detections = db.query(EmotionDetection).filter(
-        EmotionDetection.session_id.in_(session_ids)
+        EmotionDetection.session_id.in_(session_ids),
+        EmotionDetection.timestamp >= since
     ).all()
 
-    # Map detections to days
     day_map = defaultdict(list)
     for det in detections:
-        day = det.timestamp.date()
+        det_date = det.timestamp.astimezone(MANILA_TZ).date()
         facial = db.query(FacialData).filter(FacialData.detection_id == det.id).first()
         if not facial:
             continue
@@ -331,7 +331,7 @@ def get_intensity_chart(
             intensity = "moderate"
         else:
             intensity = "severe"
-        day_map[day].append((emotion, intensity))
+        day_map[det_date].append((emotion, intensity))
 
     chart = []
     for day in days:
@@ -356,8 +356,8 @@ def get_dominant_emotion_chart(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Return most dominant emotion for each day in the window (default: current week, Mon-Sun)."""
-    now = datetime.utcnow()
+    MANILA_TZ = ZoneInfo("Asia/Manila")
+    now = datetime.now(MANILA_TZ)
     if window == 'day':
         since = now.replace(hour=0, minute=0, second=0, microsecond=0)
         days = [since.date()]
@@ -375,23 +375,22 @@ def get_dominant_emotion_chart(
         raise HTTPException(status_code=400, detail="Invalid window")
 
     sessions = db.query(SessionModel).filter(
-        SessionModel.user_id == current_user.id,
-        SessionModel.start_time >= since
+        SessionModel.user_id == current_user.id
     ).all()
     session_ids = [s.id for s in sessions]
     detections = db.query(EmotionDetection).filter(
-        EmotionDetection.session_id.in_(session_ids)
+        EmotionDetection.session_id.in_(session_ids),
+        EmotionDetection.timestamp >= since
     ).all()
 
-    # Map detections to days
     day_map = defaultdict(list)
     for det in detections:
-        day = det.timestamp.date()
+        det_date = det.timestamp.astimezone(MANILA_TZ).date()
         facial = db.query(FacialData).filter(FacialData.detection_id == det.id).first()
         if not facial:
             continue
         emotion = facial.emotion.lower()
-        day_map[day].append(emotion)
+        day_map[det_date].append(emotion)
 
     chart = []
     for day in days:
@@ -421,25 +420,6 @@ def get_session(
         raise HTTPException(status_code=404, detail="Session not found")
     return session
 
-@router.patch("/{session_id}/end")
-def end_session(
-    session_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """End a session by setting the end time."""
-    session = db.query(SessionModel).filter(
-        SessionModel.id == session_id,
-        SessionModel.user_id == current_user.id
-    ).first()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    if session.end_time:
-        raise HTTPException(status_code=400, detail="Session already ended")
-    session.end_time = datetime.utcnow()
-    db.commit()
-    return {"message": "Session ended successfully"}
-
 @router.delete("/{session_id}")
 def delete_session(
     session_id: int,
@@ -464,8 +444,10 @@ def process_emotion(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Process emotion data and generate wellness suggestions using Gemini 1.5 Flash."""
-    detection = EmotionDetection(session_id=session_id, timestamp=datetime.utcnow()) # Added timestamp here for EmotionDetection
+    """Process emotion data and generate wellness suggestions using Gemini 1.5 Flash. Also ends the session automatically."""
+    from zoneinfo import ZoneInfo
+    MANILA_TZ = ZoneInfo("Asia/Manila")
+    detection = EmotionDetection(session_id=session_id, timestamp=datetime.now(MANILA_TZ)) # Use Manila time for timestamp
     db.add(detection)
     db.commit()
     db.refresh(detection)
@@ -523,7 +505,15 @@ def process_emotion(
     db.commit()
     db.refresh(suggestion)
 
-    
+    # 6. End the session automatically
+    session = db.query(SessionModel).filter(
+        SessionModel.id == session_id,
+        SessionModel.user_id == current_user.id
+    ).first()
+    if session and not session.end_time:
+        session.end_time = datetime.now(MANILA_TZ)
+        db.commit()
+
     parts = suggestion_text.split('•')
     acknowledgment = parts[0].strip() if parts else ""
     suggestions_list = [s.strip() for s in parts[1:] if s.strip()]
