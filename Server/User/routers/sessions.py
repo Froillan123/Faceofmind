@@ -5,7 +5,7 @@ from typing import List, Optional # Import Optional
 from datetime import datetime, timedelta
 from database import get_db
 from models import Session as SessionModel, User, EmotionDetection, FacialData, VoiceData, WellnessSuggestion, Feedback
-from schemas import SessionCreate, SessionResponse, SessionWithDetections, FeedbackCreate, FeedbackResponse, EmotionDetectionWithData, FacialDataResponse, VoiceDataResponse, WellnessSuggestionResponse # Removed FeedbackCreate, FeedbackResponse as they are defined later.
+from schemas import SessionCreate, SessionResponse, SessionWithDetections, FeedbackCreate, FeedbackResponse, EmotionDetectionWithData, FacialDataResponse, VoiceDataResponse, WellnessSuggestionResponse, SessionOverview # Removed FeedbackCreate, FeedbackResponse as they are defined later.
 from dependencies import get_current_active_user, get_current_user
 from config import settings
 import requests
@@ -79,17 +79,63 @@ def create_session(
     db.refresh(db_session)
     return db_session
 
-@router.get("/", response_model=List[SessionResponse])
+def summarize_suggestion(suggestion: str) -> str:
+    if not suggestion:
+        return None
+    # Try to get the first sentence
+    for sep in [".", "!", "?"]:
+        if sep in suggestion:
+            first_sentence = suggestion.split(sep)[0].strip()
+            if first_sentence:
+                return first_sentence
+    # If no sentence-ending punctuation, return first 6 words
+    words = suggestion.split()
+    return " ".join(words[:6]) + ("..." if len(words) > 6 else "")
+
+@router.get("/", response_model=List[SessionOverview])
 def get_user_sessions(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get all sessions for the current user."""
-    return db.query(SessionModel).filter(
+    """Get all sessions for the current user, with dominant emotion and brief suggestion."""
+    sessions = db.query(SessionModel).filter(
         SessionModel.user_id == current_user.id
     ).offset(skip).limit(limit).all()
+
+    result = []
+    for session in sessions:
+        # Get all detections for this session
+        detections = db.query(EmotionDetection).filter(
+            EmotionDetection.session_id == session.id
+        ).all()
+        # Find dominant emotion
+        emotions = []
+        for det in detections:
+            facial = db.query(FacialData).filter(FacialData.detection_id == det.id).first()
+            if facial:
+                emotions.append(facial.emotion.lower())
+        dominant_emotion = None
+        if emotions:
+            dominant_emotion = Counter(emotions).most_common(1)[0][0]
+        # Get the first wellness suggestion (summarized)
+        suggestion = None
+        for det in detections:
+            wellness = db.query(WellnessSuggestion).filter(WellnessSuggestion.detection_id == det.id).first()
+            if wellness and wellness.suggestion:
+                raw_suggestion = wellness.suggestion.split('•')[0].strip()
+                suggestion = summarize_suggestion(raw_suggestion)
+                break
+        result.append(SessionOverview(
+            id=session.id,
+            user_id=session.user_id,
+            start_time=session.start_time,
+            end_time=session.end_time,
+            dominant_emotion=dominant_emotion,
+            suggestion=suggestion
+        ))
+    return result
 
 def call_openrouter_gpt4o(prompt: str) -> str:
     """Call OpenRouter's GPT-4o as a fallback."""
@@ -206,7 +252,6 @@ def get_diagnosis(
         summary += ("\nWARNING: There are indications of suicidal thoughts or self-harm in recent user input. "
                     "Strongly recommend the user seek immediate professional help or contact a crisis hotline.\n")
 
-    # Optionally, include recent voice data and suggestions
     recent_voice = db.query(VoiceData).join(EmotionDetection).filter(EmotionDetection.id.in_([d.id for d in detections])).order_by(VoiceData.id.desc()).limit(3).all()
     if recent_voice:
         summary += "\nRecent voice entries:\n"
@@ -478,7 +523,7 @@ def process_emotion(
     db.commit()
     db.refresh(suggestion)
 
-    # Parse the response for the frontend
+    
     parts = suggestion_text.split('•')
     acknowledgment = parts[0].strip() if parts else ""
     suggestions_list = [s.strip() for s in parts[1:] if s.strip()]
@@ -500,14 +545,14 @@ def generate_wellness_response_with_gemini(emotion: str, content: str, db: Sessi
         # Create the model instance using 'gemini-1.5-flash'
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # Craft the prompt based on emotion type
+        
         emotion = emotion.lower()
         prompt = build_gemini_prompt(emotion, content)
         
-        # Generate the response
+        
         response = model.generate_content(prompt)
         
-        # Format the response
+       
         return format_gemini_response(response.text, emotion)
         
     except Exception as e:
@@ -583,17 +628,14 @@ Provide:
 
 Make suggestions concrete and doable."""
 
-    else:   # Default prompt
+    else:   
         return base_prompt.format(emotion=emotion, content=content)
 
 def format_gemini_response(response_text: str, emotion: str) -> str:
     """Format Gemini's response for consistent output."""
-    # Basic cleaning
     response_text = response_text.strip()
     
-    # Ensure proper bullet formatting
     if '•' not in response_text:
-        # Try to convert other bullet types
         response_text = response_text.replace('*', '•')
         response_text = response_text.replace('-', '•')
     
@@ -645,7 +687,7 @@ def get_enhanced_fallback_response(emotion: str, content: str) -> str:
     if emotion == "tired":
         return "Fatigue deserves compassion • Rest without guilt • Hydrate and nourish your body • Small breaks help"
     
-    if emotion == "stressed": # Corrected this from a list to a string
+    if emotion == "stressed": 
         return "Stress feels overwhelming • Prioritize one small task • 5-minute breaks reset focus • This difficult period will pass"
     
     # Content-specific responses
@@ -757,11 +799,11 @@ def get_session_history(
             id=det.id,
             session_id=det.session_id,
             timestamp=det.timestamp,
-            facial_data=facial_response, # Now a single object or None
-            voice_data=voice_response,   # Now a single object or None
-            wellness_suggestions=wellness_suggestion_response, # Now a single object or None
-            emotion_color=facial_emotion_color, # Pass the color derived from facial data here
-            facial_emotion=facial_emotion_str # Pass the facial emotion itself here for easier access
+            facial_data=facial_response, 
+            voice_data=voice_response,   
+            wellness_suggestions=wellness_suggestion_response, 
+            emotion_color=facial_emotion_color, 
+            facial_emotion=facial_emotion_str 
         ))
 
     return SessionWithDetections(
