@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional # Import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import get_db
 from models import Session as SessionModel, User, EmotionDetection, FacialData, VoiceData, WellnessSuggestion, Feedback
 from schemas import SessionCreate, SessionResponse, SessionWithDetections, FeedbackCreate, FeedbackResponse, EmotionDetectionWithData, FacialDataResponse, VoiceDataResponse, WellnessSuggestionResponse # Removed FeedbackCreate, FeedbackResponse as they are defined later.
@@ -12,12 +12,17 @@ import requests
 import json
 from pydantic import BaseModel
 import google.generativeai as genai
+from random import uniform
+from collections import defaultdict, Counter
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 class ProcessEmotionRequest(BaseModel):
     emotion: str
     voice_content: str
+
+class DiagnosisRequest(BaseModel):
+    window: str  # 'day', '3days', 'week', 'month'
 
 # Enhanced emotion color mapping with more nuanced emotions
 EMOTION_COLORS = {
@@ -78,6 +83,232 @@ def get_user_sessions(
         SessionModel.user_id == current_user.id
     ).offset(skip).limit(limit).all()
 
+@router.post("/diagnosis")
+def get_diagnosis(
+    req: DiagnosisRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Aggregate user's emotion detections, classify intensity, and get diagnosis from Gemini."""
+    # Determine time window
+    now = datetime.utcnow()
+    if req.window == 'day':
+        since = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif req.window == '3days':
+        since = now - timedelta(days=3)
+    elif req.window == 'week':
+        since = now - timedelta(weeks=1)
+    elif req.window == 'month':
+        since = now - timedelta(days=30)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid window")
+
+    # Get all user's sessions in window
+    sessions = db.query(SessionModel).filter(
+        SessionModel.user_id == current_user.id,
+        SessionModel.start_time >= since
+    ).all()
+    session_ids = [s.id for s in sessions]
+    if not session_ids:
+        return {"diagnosis": "No sessions in this window.", "emotion_tally": {}, "intensity_breakdown": {}}
+
+    # Get all emotion detections in these sessions
+    detections = db.query(EmotionDetection).filter(
+        EmotionDetection.session_id.in_(session_ids)
+    ).all()
+    if not detections:
+        return {"diagnosis": "No emotion detections in this window.", "emotion_tally": {}, "intensity_breakdown": {}}
+
+    # Tally emotions and classify intensity
+    emotion_tally = {}
+    intensity_breakdown = {"mild": 0, "moderate": 0, "severe": 0}
+    emotion_intensity_map = {}
+    severe_negative_count = 0
+    for det in detections:
+        facial = db.query(FacialData).filter(FacialData.detection_id == det.id).first()
+        if not facial:
+            continue
+        emotion = facial.emotion.lower()
+        # Placeholder: random confidence score (simulate AI model output)
+        confidence = uniform(0.5, 1.0)
+        if confidence <= 0.65:
+            intensity = "mild"
+        elif confidence <= 0.80:
+            intensity = "moderate"
+        else:
+            intensity = "severe"
+        emotion_tally[emotion] = emotion_tally.get(emotion, 0) + 1
+        intensity_breakdown[intensity] += 1
+        if emotion not in emotion_intensity_map:
+            emotion_intensity_map[emotion] = {"mild": 0, "moderate": 0, "severe": 0}
+        emotion_intensity_map[emotion][intensity] += 1
+        # Count severe negative emotions for awareness
+        if intensity == "severe" and emotion in ["sad", "depressed", "angry", "furious", "fearful", "anxious", "stressed", "overwhelmed"]:
+            severe_negative_count += 1
+
+    # Prepare summary for Gemini
+    summary = f"User emotion summary (window: {req.window}):\n"
+    for emotion, count in emotion_tally.items():
+        summary += f"- {emotion}: {count} times (mild: {emotion_intensity_map[emotion]['mild']}, moderate: {emotion_intensity_map[emotion]['moderate']}, severe: {emotion_intensity_map[emotion]['severe']})\n"
+    summary += f"\nTotal detections: {len(detections)}\n"
+    summary += f"Intensity breakdown: mild={intensity_breakdown['mild']}, moderate={intensity_breakdown['moderate']}, severe={intensity_breakdown['severe']}\n"
+    if severe_negative_count > 0:
+        summary += f"\nThere were {severe_negative_count} severe negative emotion detections.\n"
+
+    # Optionally, include recent voice data and suggestions
+    recent_voice = db.query(VoiceData).join(EmotionDetection).filter(EmotionDetection.id.in_([d.id for d in detections])).order_by(VoiceData.id.desc()).limit(3).all()
+    if recent_voice:
+        summary += "\nRecent voice entries:\n"
+        for v in recent_voice:
+            summary += f"- {v.content[:100]}\n"
+    recent_suggestions = db.query(WellnessSuggestion).join(EmotionDetection).filter(EmotionDetection.id.in_([d.id for d in detections])).order_by(WellnessSuggestion.id.desc()).limit(3).all()
+    if recent_suggestions:
+        summary += "\nRecent wellness suggestions:\n"
+        for s in recent_suggestions:
+            summary += f"- {s.suggestion[:100]}\n"
+
+    # Send to Gemini for diagnosis
+    diagnosis_prompt = summary + "\n\nBased on the above, provide a brief mental health analysis. Use language like 'You are experiencing...' or 'It appears you may be experiencing...'. If there is a pattern of severe negative emotions (e.g., sadness, anger, fear), raise awareness and suggest the user may benefit from talking to a professional, but do NOT replace professional advice. Be concise, compassionate, and focus on awareness and next steps, not diagnosis."
+    try:
+        genai.configure(api_key=settings.gemini_api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(diagnosis_prompt)
+        diagnosis = response.text.strip()
+    except Exception as e:
+        diagnosis = "AI awareness unavailable. Please try again later."
+
+    return {
+        "diagnosis": diagnosis,
+        "emotion_tally": emotion_tally,
+        "intensity_breakdown": intensity_breakdown,
+        "emotion_intensity_map": emotion_intensity_map,
+        "window": req.window
+    }
+
+@router.get("/intensity_chart")
+def get_intensity_chart(
+    window: str = 'week',
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Return dominant emotion and intensity tally for each day in the window (default: current week, Mon-Sun)."""
+    now = datetime.utcnow()
+    if window == 'day':
+        since = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        days = [since.date()]
+    elif window == '3days':
+        since = now - timedelta(days=3)
+        days = [(since + timedelta(days=i)).date() for i in range(4)]
+    elif window == 'week':
+        # Get current week's Monday
+        monday = now - timedelta(days=now.weekday())
+        days = [(monday + timedelta(days=i)).date() for i in range(7)]
+        since = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif window == 'month':
+        since = now - timedelta(days=30)
+        days = [(since + timedelta(days=i)).date() for i in range(31)]
+    else:
+        raise HTTPException(status_code=400, detail="Invalid window")
+
+    sessions = db.query(SessionModel).filter(
+        SessionModel.user_id == current_user.id,
+        SessionModel.start_time >= since
+    ).all()
+    session_ids = [s.id for s in sessions]
+    detections = db.query(EmotionDetection).filter(
+        EmotionDetection.session_id.in_(session_ids)
+    ).all()
+
+    # Map detections to days
+    day_map = defaultdict(list)
+    for det in detections:
+        day = det.timestamp.date()
+        facial = db.query(FacialData).filter(FacialData.detection_id == det.id).first()
+        if not facial:
+            continue
+        emotion = facial.emotion.lower()
+        confidence = uniform(0.5, 1.0)
+        if confidence <= 0.65:
+            intensity = "mild"
+        elif confidence <= 0.80:
+            intensity = "moderate"
+        else:
+            intensity = "severe"
+        day_map[day].append((emotion, intensity))
+
+    chart = []
+    for day in days:
+        emotions = [e for e, _ in day_map.get(day, [])]
+        intensities = [i for _, i in day_map.get(day, [])]
+        if emotions:
+            dominant_emotion = Counter(emotions).most_common(1)[0][0]
+            intensity_tally = {k: intensities.count(k) for k in ["mild", "moderate", "severe"]}
+        else:
+            dominant_emotion = None
+            intensity_tally = {"mild": 0, "moderate": 0, "severe": 0}
+        chart.append({
+            "day": str(day),
+            "dominant_emotion": dominant_emotion,
+            "intensity_tally": intensity_tally
+        })
+    return chart
+
+@router.get("/dominant_emotion_chart")
+def get_dominant_emotion_chart(
+    window: str = 'week',
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Return most dominant emotion for each day in the window (default: current week, Mon-Sun)."""
+    now = datetime.utcnow()
+    if window == 'day':
+        since = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        days = [since.date()]
+    elif window == '3days':
+        since = now - timedelta(days=3)
+        days = [(since + timedelta(days=i)).date() for i in range(4)]
+    elif window == 'week':
+        monday = now - timedelta(days=now.weekday())
+        days = [(monday + timedelta(days=i)).date() for i in range(7)]
+        since = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif window == 'month':
+        since = now - timedelta(days=30)
+        days = [(since + timedelta(days=i)).date() for i in range(31)]
+    else:
+        raise HTTPException(status_code=400, detail="Invalid window")
+
+    sessions = db.query(SessionModel).filter(
+        SessionModel.user_id == current_user.id,
+        SessionModel.start_time >= since
+    ).all()
+    session_ids = [s.id for s in sessions]
+    detections = db.query(EmotionDetection).filter(
+        EmotionDetection.session_id.in_(session_ids)
+    ).all()
+
+    # Map detections to days
+    day_map = defaultdict(list)
+    for det in detections:
+        day = det.timestamp.date()
+        facial = db.query(FacialData).filter(FacialData.detection_id == det.id).first()
+        if not facial:
+            continue
+        emotion = facial.emotion.lower()
+        day_map[day].append(emotion)
+
+    chart = []
+    for day in days:
+        emotions = day_map.get(day, [])
+        if emotions:
+            dominant_emotion = Counter(emotions).most_common(1)[0][0]
+        else:
+            dominant_emotion = None
+        chart.append({
+            "day": str(day),
+            "dominant_emotion": dominant_emotion
+        })
+    return chart
+
 @router.get("/{session_id}", response_model=SessionResponse)
 def get_session(
     session_id: int,
@@ -137,7 +368,6 @@ def process_emotion(
     current_user = Depends(get_current_user)
 ):
     """Process emotion data and generate wellness suggestions using Gemini 1.5 Flash."""
-    # 1. Store detection data
     detection = EmotionDetection(session_id=session_id, timestamp=datetime.utcnow()) # Added timestamp here for EmotionDetection
     db.add(detection)
     db.commit()
