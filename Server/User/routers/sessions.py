@@ -55,6 +55,14 @@ EMOTION_COLORS = {
     "confused": "#DAA520"   # Golden rod
 }
 
+SUICIDAL_KEYWORDS = [
+    "die", "suicide", "kill myself", "end my life", "self-harm", "hurt myself", "give up", "worthless", "no way out"
+]
+
+def contains_suicidal_keywords(text: str) -> bool:
+    text_lower = text.lower()
+    return any(kw in text_lower for kw in SUICIDAL_KEYWORDS)
+
 @router.post("/", response_model=SessionResponse)
 def create_session(
     session_data: SessionCreate,
@@ -170,6 +178,22 @@ def get_diagnosis(
         if intensity == "severe" and emotion in ["sad", "depressed", "angry", "furious", "fearful", "anxious", "stressed", "overwhelmed"]:
             severe_negative_count += 1
 
+    # Check for suicidal/self-harm keywords in recent voice data
+    recent_voice = db.query(VoiceData).join(EmotionDetection).filter(EmotionDetection.id.in_([d.id for d in detections])).order_by(VoiceData.id.desc()).limit(3).all()
+    suicidal_flag = False
+    if recent_voice:
+        for v in recent_voice:
+            if contains_suicidal_keywords(v.content):
+                suicidal_flag = True
+                break
+    # Optionally, check facial emotion text as well (not just voice)
+    if not suicidal_flag:
+        for det in detections:
+            facial = db.query(FacialData).filter(FacialData.detection_id == det.id).first()
+            if facial and contains_suicidal_keywords(facial.emotion):
+                suicidal_flag = True
+                break
+
     # Prepare summary for Gemini
     summary = f"User emotion summary (window: {req.window}):\n"
     for emotion, count in emotion_tally.items():
@@ -178,6 +202,9 @@ def get_diagnosis(
     summary += f"Intensity breakdown: mild={intensity_breakdown['mild']}, moderate={intensity_breakdown['moderate']}, severe={intensity_breakdown['severe']}\n"
     if severe_negative_count > 0:
         summary += f"\nThere were {severe_negative_count} severe negative emotion detections.\n"
+    if suicidal_flag:
+        summary += ("\nWARNING: There are indications of suicidal thoughts or self-harm in recent user input. "
+                    "Strongly recommend the user seek immediate professional help or contact a crisis hotline.\n")
 
     # Optionally, include recent voice data and suggestions
     recent_voice = db.query(VoiceData).join(EmotionDetection).filter(EmotionDetection.id.in_([d.id for d in detections])).order_by(VoiceData.id.desc()).limit(3).all()
@@ -420,14 +447,26 @@ def process_emotion(
     # 4. Generate wellness suggestion with Gemini 1.5 Flash
     suggestion_text = None
     try:
-        suggestion_text = generate_wellness_response_with_gemini(
-            emotion=req.emotion,
-            content=req.voice_content,
-            db=db
-        )
+        # Check for suicidal/self-harm keywords
+        if contains_suicidal_keywords(req.voice_content):
+            prompt = (
+                "The user has expressed thoughts of suicide or self-harm. "
+                "Your role is to be extremely gentle, calm, and supportive. "
+                "Do NOT judge or dismiss their feelings. "
+                "Encourage them to reach out to a mental health professional or crisis hotline immediately. "
+                "Provide immediate comfort, grounding techniques, and remind them they are not alone. "
+                "Format: [Gentle acknowledgment] • [Immediate comfort] • [Crisis support suggestion] • [Encouragement to seek help]"
+                f"\nUser's message: '{req.voice_content}'"
+            )
+        else:
+            prompt = build_gemini_prompt(req.emotion.lower(), req.voice_content)
+        # Try Gemini
+        genai.configure(api_key=settings.gemini_api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
+        suggestion_text = format_gemini_response(response.text, req.emotion.lower())
     except Exception as e:
         # Fallback to OpenRouter GPT-4o
-        prompt = build_gemini_prompt(req.emotion.lower(), req.voice_content)
         suggestion_text = call_openrouter_gpt4o(prompt)
 
     # 5. Store suggestion
