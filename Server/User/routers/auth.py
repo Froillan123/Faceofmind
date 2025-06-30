@@ -49,7 +49,7 @@ def register(user_data: UserCreate, background_tasks: BackgroundTasks, db: Sessi
         first_name=user_data.first_name,
         last_name=user_data.last_name,
         role="user",
-        status=UserStatus.INACTIVE  # Default to inactive, needs activation
+        status=UserStatus.INACTIVE  
     )
     
     db.add(db_user)
@@ -58,11 +58,9 @@ def register(user_data: UserCreate, background_tasks: BackgroundTasks, db: Sessi
     
     # Generate and send OTP
     otp = generate_otp()
-    # Use asyncio.run for sync context
     try:
         asyncio.run(store_otp(user_data.email, otp))
     except RuntimeError:
-        # If already in an event loop (e.g. in tests), fallback to loop.run_until_complete
         loop = asyncio.get_event_loop()
         loop.run_until_complete(store_otp(user_data.email, otp))
     background_tasks.add_task(send_otp_email, user_data.email, otp)

@@ -274,3 +274,14 @@ class SessionWithDetections(SessionResponse):
 # I've kept the one that matches your router's usage.
 # If Feedback is not directly linked to EmotionDetection, then your existing schema for it is fine.
 # I am assuming Feedback is for the entire session, not a specific detection within it.
+
+class SessionOverview(BaseModel):
+    id: int
+    user_id: int
+    start_time: datetime
+    end_time: Optional[datetime]
+    dominant_emotion: Optional[str]
+    suggestion: Optional[str]
+
+    class Config:
+        orm_mode = True
