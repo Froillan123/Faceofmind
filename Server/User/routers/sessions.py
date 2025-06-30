@@ -83,6 +83,30 @@ def get_user_sessions(
         SessionModel.user_id == current_user.id
     ).offset(skip).limit(limit).all()
 
+def call_openrouter_gpt4o(prompt: str) -> str:
+    """Call OpenRouter's GPT-4o as a fallback."""
+    api_url = settings.openrouter_api_url or "https://openrouter.ai/api/v1/chat"
+    api_key = settings.openrouter_api_key
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "openai/gpt-4o",
+        "messages": [
+            {"role": "system", "content": "You are a compassionate mental health assistant."},
+            {"role": "user", "content": prompt}
+        ]
+    }
+    try:
+        resp = requests.post(api_url, headers=headers, data=json.dumps(data), timeout=30)
+        resp.raise_for_status()
+        result = resp.json()
+        # OpenRouter returns choices[0].message.content
+        return result["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        return "AI awareness unavailable (OpenRouter fallback failed). Please try again later."
+
 @router.post("/diagnosis")
 def get_diagnosis(
     req: DiagnosisRequest,
@@ -175,7 +199,8 @@ def get_diagnosis(
         response = model.generate_content(diagnosis_prompt)
         diagnosis = response.text.strip()
     except Exception as e:
-        diagnosis = "AI awareness unavailable. Please try again later."
+        # Fallback to OpenRouter GPT-4o
+        diagnosis = call_openrouter_gpt4o(diagnosis_prompt)
 
     return {
         "diagnosis": diagnosis,
@@ -393,11 +418,17 @@ def process_emotion(
     db.refresh(voice)
 
     # 4. Generate wellness suggestion with Gemini 1.5 Flash
-    suggestion_text = generate_wellness_response_with_gemini(
-        emotion=req.emotion,
-        content=req.voice_content,
-        db=db
-    )
+    suggestion_text = None
+    try:
+        suggestion_text = generate_wellness_response_with_gemini(
+            emotion=req.emotion,
+            content=req.voice_content,
+            db=db
+        )
+    except Exception as e:
+        # Fallback to OpenRouter GPT-4o
+        prompt = build_gemini_prompt(req.emotion.lower(), req.voice_content)
+        suggestion_text = call_openrouter_gpt4o(prompt)
 
     # 5. Store suggestion
     suggestion = WellnessSuggestion(
