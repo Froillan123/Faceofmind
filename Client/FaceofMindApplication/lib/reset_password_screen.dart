@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'main.dart';
+import 'services/api_service.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -20,6 +21,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool confirmPasswordVisible = false;
   bool passwordValid = true;
   bool confirmPasswordValid = true;
+  bool isLoading = false;
 
   String? _validatePassword(String value) {
     if (value.length < 8) return 'At least 8 characters';
@@ -27,9 +29,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     return null;
   }
 
-  void _sendResetCode() {
-    setState(() { sent = true; });
-    showCustomToast(context, 'Reset code sent to your email!', success: true);
+  Future<void> _sendResetCode() async {
+    setState(() { isLoading = true; });
+    final res = await ApiService.requestPasswordReset(emailController.text.trim());
+    setState(() { isLoading = false; });
+    if (res['success']) {
+      setState(() { sent = true; });
+      showCustomToast(context, 'Reset code sent to your email!', success: true);
+    } else {
+      showCustomToast(context, res['message'] ?? 'Failed to send reset code', success: false);
+    }
   }
 
   void _verifyCode() {
@@ -41,7 +50,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
   }
 
-  void _resetPassword() {
+  Future<void> _resetPassword() async {
     final passwordError = _validatePassword(passwordController.text);
     setState(() {
       passwordValid = passwordError == null;
@@ -55,8 +64,19 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       showCustomToast(context, 'Passwords do not match', success: false);
       return;
     }
-    showCustomToast(context, 'Password reset successful! Please login.', success: true);
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    setState(() { isLoading = true; });
+    final res = await ApiService.resetPassword(
+      emailController.text.trim(),
+      codeController.text.trim(),
+      passwordController.text,
+    );
+    setState(() { isLoading = false; });
+    if (res['success']) {
+      showCustomToast(context, 'Password reset successful! Please login.', success: true);
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } else {
+      showCustomToast(context, res['message'] ?? 'Failed to reset password', success: false);
+    }
   }
 
   @override
@@ -100,7 +120,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
-                      onPressed: _sendResetCode,
+                      onPressed: isLoading ? null : _sendResetCode,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: mainColor,
                         foregroundColor: Colors.white,
@@ -198,7 +218,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
-                      onPressed: _resetPassword,
+                      onPressed: isLoading ? null : _resetPassword,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: mainColor,
                         foregroundColor: Colors.white,

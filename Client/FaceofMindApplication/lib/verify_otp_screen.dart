@@ -11,22 +11,16 @@ class VerifyOtpScreen extends StatefulWidget {
 }
 
 class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
-  final List<TextEditingController> _otpControllers = List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
+  final TextEditingController _otpController = TextEditingController();
   bool isLoading = false;
 
   @override
   void dispose() {
-    for (final c in _otpControllers) {
-      c.dispose();
-    }
-    for (final f in _focusNodes) {
-      f.dispose();
-    }
+    _otpController.dispose();
     super.dispose();
   }
 
-  String get _otpValue => _otpControllers.map((c) => c.text).join();
+  String get _otpValue => _otpController.text.trim();
 
   Future<void> _verifyOtp() async {
     if (_otpValue.length != 6) {
@@ -90,40 +84,23 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16 * fontScale, color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(6, (i) => Container(
-                            width: 44,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            child: TextField(
-                              controller: _otpControllers[i],
-                              focusNode: _focusNodes[i],
-                              maxLength: 1,
-                              keyboardType: TextInputType.number,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 28 * fontScale, letterSpacing: 2),
-                              decoration: InputDecoration(
-                                counterText: '',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: mainColor),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(color: mainColor, width: 2),
-                                ),
-                              ),
-                              onChanged: (val) {
-                                if (val.length == 1 && i < 5) {
-                                  _focusNodes[i + 1].requestFocus();
-                                } else if (val.isEmpty && i > 0) {
-                                  _focusNodes[i - 1].requestFocus();
-                                }
-                              },
-                            ),
-                          )),
+                      TextField(
+                        controller: _otpController,
+                        maxLength: 6,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 28 * fontScale, letterSpacing: 2),
+                        decoration: InputDecoration(
+                          counterText: '',
+                          hintText: 'Enter 6-digit code',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: mainColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: mainColor, width: 2),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),

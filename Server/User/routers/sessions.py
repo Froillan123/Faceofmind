@@ -105,6 +105,8 @@ def get_user_sessions(
         SessionModel.user_id == current_user.id
     ).offset(skip).limit(limit).all()
 
+    print(f"[DEBUG] User: {current_user.email} (id={current_user.id}), Sessions found: {len(sessions)}")
+
     result = []
     for session in sessions:
         # Get all detections for this session
@@ -404,6 +406,15 @@ def get_dominant_emotion_chart(
             "dominant_emotion": dominant_emotion
         })
     return chart
+
+@router.get("/count")
+def get_session_count(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get the total number of sessions for the current user."""
+    count = db.query(SessionModel).filter(SessionModel.user_id == current_user.id).count()
+    return {"count": count}
 
 @router.get("/{session_id}", response_model=SessionResponse)
 def get_session(
