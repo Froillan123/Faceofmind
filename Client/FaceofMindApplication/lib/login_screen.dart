@@ -5,6 +5,7 @@ import 'services/api_service.dart';
 import 'verify_otp_screen.dart';
 import 'reset_password_screen.dart';
 import 'main.dart' show showCustomToast;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool emailValid = true;
   bool passwordValid = true;
   bool rememberMe = false;
+  bool isLoading = false;
 
   @override
   void dispose() {
@@ -32,17 +34,28 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       emailValid = emailController.text.contains('@');
       passwordValid = passwordController.text.isNotEmpty;
+      isLoading = true;
     });
-    if (!emailValid || !passwordValid) return;
+    if (!emailValid || !passwordValid) {
+      setState(() { isLoading = false; });
+      return;
+    }
     final res = await ApiService.login(emailController.text.trim(), passwordController.text);
     if (res['success']) {
+      final token = res['data']['access_token'] ?? '';
+      if (token.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('jwt_token', token);
+      }
       showCustomToast(context, 'Login successful!', success: true);
+      await Future.delayed(const Duration(seconds: 2)); 
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(builder: (context) => HomeScreen(token: token)),
       );
     } else {
       showCustomToast(context, res['message'] ?? 'Login failed', success: false);
     }
+    setState(() { isLoading = false; });
   }
 
   @override
@@ -180,8 +193,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                         textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                       ),
-                      onPressed: _handleLogin,
-                      child: const Text('Login'),
+                      onPressed: isLoading ? null : _handleLogin,
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : const Text('Login'),
                     ),
                   ),
                   const SizedBox(height: 18),

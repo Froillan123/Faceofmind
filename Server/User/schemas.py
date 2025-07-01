@@ -285,3 +285,11 @@ class SessionOverview(BaseModel):
 
     class Config:
         orm_mode = True
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str

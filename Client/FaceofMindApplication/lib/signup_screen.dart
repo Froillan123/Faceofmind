@@ -27,10 +27,12 @@ class _SignupScreenState extends State<SignupScreen> {
   bool lastNameValid = true;
   bool rememberMe = false;
   int step = 1;
+  bool isLoading = false;
 
   String? _validatePassword(String value) {
-    if (value.length < 8) return 'At least 8 characters';
-    if (!RegExp(r'[0-9]').hasMatch(value)) return 'At least one number';
+    if (value.isEmpty) return 'Password is required';
+    if (value.length < 8) return 'At least 8 characters and 1 number';
+    if (!RegExp(r'[0-9]').hasMatch(value)) return 'At least 8 characters and 1 number';
     return null;
   }
 
@@ -63,23 +65,28 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() {
       passwordValid = _validatePassword(passwordController.text) == null;
       confirmPasswordValid = passwordController.text == confirmPasswordController.text;
+      isLoading = true;
     });
-    if (!passwordValid || !confirmPasswordValid) return;
+    if (!passwordValid || !confirmPasswordValid) {
+      setState(() { isLoading = false; });
+      return;
+    }
+    final email = emailController.text.trim();
     final res = await ApiService.register(
-      emailController.text.trim(),
+      email,
       passwordController.text,
       firstNameController.text.trim(),
       lastNameController.text.trim(),
     );
+    setState(() { isLoading = false; });
     if (res['success']) {
       showCustomToast(context, 'Registration successful! Check your email for OTP.', success: true);
-      emailController.clear();
       passwordController.clear();
       firstNameController.clear();
       lastNameController.clear();
       confirmPasswordController.clear();
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => VerifyOtpScreen(email: emailController.text.trim())),
+        MaterialPageRoute(builder: (context) => VerifyOtpScreen(email: email)),
       );
     } else {
       showCustomToast(context, res['message'] ?? 'Registration failed', success: false);
@@ -149,6 +156,14 @@ class _SignupScreenState extends State<SignupScreen> {
                         });
                       },
                     ),
+                    if (!emailValid)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, left: 4),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Email is required and must be valid', style: TextStyle(color: Colors.red, fontSize: 13)),
+                        ),
+                      ),
                     const SizedBox(height: 10),
                     Align(
                       alignment: Alignment.centerLeft,
@@ -182,6 +197,14 @@ class _SignupScreenState extends State<SignupScreen> {
                         });
                       },
                     ),
+                    if (!lastNameValid)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, left: 4),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Last name is required', style: TextStyle(color: Colors.red, fontSize: 13)),
+                        ),
+                      ),
                     const SizedBox(height: 10),
                     Align(
                       alignment: Alignment.centerLeft,
@@ -215,6 +238,14 @@ class _SignupScreenState extends State<SignupScreen> {
                         });
                       },
                     ),
+                    if (!firstNameValid)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, left: 4),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('First name is required', style: TextStyle(color: Colors.red, fontSize: 13)),
+                        ),
+                      ),
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
@@ -284,6 +315,14 @@ class _SignupScreenState extends State<SignupScreen> {
                         });
                       },
                     ),
+                    if (_validatePassword(passwordController.text) != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, left: 4),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(_validatePassword(passwordController.text)!, style: TextStyle(color: Colors.red, fontSize: 13)),
+                        ),
+                      ),
                     const SizedBox(height: 10),
                     Align(
                       alignment: Alignment.centerLeft,
@@ -322,6 +361,14 @@ class _SignupScreenState extends State<SignupScreen> {
                         });
                       },
                     ),
+                    if (!confirmPasswordValid)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, left: 4),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Passwords do not match', style: TextStyle(color: Colors.red, fontSize: 13)),
+                        ),
+                      ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -345,38 +392,41 @@ class _SignupScreenState extends State<SignupScreen> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _backStep,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: mainColor,
-                              side: BorderSide(color: mainColor, width: 2),
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                              textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                            ),
-                            child: const Text('Back'),
-                          ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: mainColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                          textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: mainColor,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                              textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                            ),
-                            onPressed: _handleSignup,
-                            child: const Text('Sign Up'),
-                          ),
-                        ),
-                      ],
+                        onPressed: isLoading ? null : _handleSignup,
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text('Sign Up'),
+                      ),
                     ),
-                    const SizedBox(height: 18),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: _backStep,
+                        style: TextButton.styleFrom(
+                          foregroundColor: mainColor,
+                          padding: const EdgeInsets.only(left: 0, top: 8, bottom: 8),
+                          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                        child: const Text('Back'),
+                      ),
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

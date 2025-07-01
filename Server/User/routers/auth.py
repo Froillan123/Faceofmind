@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, UserStatus
-from schemas import UserCreate, UserResponse, LoginRequest, TokenResponse, RefreshTokenRequest, RegisterResponse
+from schemas import UserCreate, UserResponse, LoginRequest, TokenResponse, RefreshTokenRequest, RegisterResponse, PasswordResetRequest, PasswordResetConfirm
 from auth import verify_password, get_password_hash, create_access_token, create_refresh_token, get_user_from_refresh_token, store_jwt_in_redis, remove_jwt_from_redis
 from dependencies import get_current_user
 from datetime import timedelta
@@ -22,6 +22,17 @@ security = HTTPBearer()
 def send_otp_email(email: str, otp: str):
     msg = MIMEText(f"Your FaceofMind verification code is: {otp}")
     msg["Subject"] = "FaceofMind Email Verification Code"
+    msg["From"] = settings.smtp_email
+    msg["To"] = email
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+        server.starttls()
+        server.login(settings.smtp_email, settings.smtp_password)
+        server.sendmail(settings.smtp_email, [email], msg.as_string())
+
+
+def send_password_reset_email(email: str, otp: str):
+    msg = MIMEText(f"Your FaceofMind password reset code is: {otp}")
+    msg["Subject"] = "FaceofMind Password Reset Code"
     msg["From"] = settings.smtp_email
     msg["To"] = email
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
@@ -171,3 +182,38 @@ async def logout(credentials: HTTPAuthorizationCredentials = Depends(security), 
     token = credentials.credentials
     await remove_jwt_from_redis(token, str(current_user.id))
     return {"message": "Successfully logged out."}
+
+
+@router.post("/request-password-reset")
+def request_password_reset(data: PasswordResetRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User with this email does not exist.")
+    otp = generate_otp()
+    try:
+        asyncio.run(store_otp(data.email, otp))
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(store_otp(data.email, otp))
+    background_tasks.add_task(send_password_reset_email, data.email, otp)
+    return {"message": "Password reset OTP sent to your email."}
+
+
+@router.post("/reset-password")
+def reset_password(data: PasswordResetConfirm, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == data.email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User with this email does not exist.")
+    # Verify OTP
+    try:
+        valid = asyncio.run(verify_otp(data.email, data.otp))
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+        valid = loop.run_until_complete(verify_otp(data.email, data.otp))
+    if not valid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired OTP.")
+    # Set new password
+    user.password = get_password_hash(data.new_password)
+    db.commit()
+    db.refresh(user)
+    return {"message": "Password has been reset successfully."}

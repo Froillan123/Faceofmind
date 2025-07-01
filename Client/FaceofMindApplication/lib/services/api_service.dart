@@ -39,6 +39,60 @@ class ApiService {
     return _processResponse(response);
   }
 
+  static Future<Map<String, dynamic>> requestPasswordReset(String email) async {
+    final url = Uri.parse('$baseUrl/api/v1/auth/request-password-reset');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email}),
+    );
+    return _processResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> resetPassword(String email, String otp, String newPassword) async {
+    final url = Uri.parse('$baseUrl/api/v1/auth/reset-password');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'otp': otp, 'new_password': newPassword}),
+    );
+    return _processResponse(response);
+  }
+
+  static Future<List<dynamic>> fetchSessions(String token) async {
+    final url = Uri.parse('$baseUrl/api/v1/sessions/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body);
+      return data;
+    } else {
+      return [];
+    }
+  }
+
+  static Future<int> fetchSessionCount(String token) async {
+    final url = Uri.parse('$baseUrl/api/v1/sessions/count');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body);
+      return data['count'] ?? 0;
+    } else {
+      return 0;
+    }
+  }
+
   static Map<String, dynamic> _processResponse(http.Response response) {
     final data = jsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {

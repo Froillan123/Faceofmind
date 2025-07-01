@@ -5,6 +5,7 @@ import 'home/home_screen.dart';
 import 'reset_password_screen.dart';
 import 'login_screen.dart';
 import 'signup_screen.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 void main() {
   runApp(const MyApp());
@@ -41,99 +42,101 @@ class LandingScreen extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            children: [
-              const SizedBox(height: 48),
-              // TODO: Replace this Icon with your logo image.
-              // To use your own image, place it in the assets/images/ directory (see instructions below).
-              Icon(Icons.psychology, size: 120, color: mainColor),
-              const SizedBox(height: 32),
-              const Text(
-                'FaceofMind',
-                style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.2,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Your personal mental wellness companion with AI-powered emotional support',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFF5A6473),
-                  fontWeight: FontWeight.w400,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 36),
-              FeatureRow(
-                icon: Icons.emoji_emotions,
-                text: 'Emotion Recognition & Voice',
-                color: mainColor,
-              ),
-              const SizedBox(height: 16),
-              FeatureRow(
-                icon: Icons.smart_toy,
-                text: 'AI Mental Health Consultation',
-                color: mainColor,
-              ),
-              const SizedBox(height: 16),
-              FeatureRow(
-                icon: Icons.groups,
-                text: 'Supportive Community',
-                color: mainColor,
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: mainColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    textStyle: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 48),
+                // TODO: Replace this Icon with your logo image.
+                // To use your own image, place it in the assets/images/ directory (see instructions below).
+                Icon(Icons.psychology, size: 120, color: mainColor),
+                const SizedBox(height: 32),
+                const Text(
+                  'FaceofMind',
+                  style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.2,
                   ),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const SignupScreen()),
-                    );
-                  },
-                  child: const Text('Get Started'),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.black87,
-                    side: BorderSide(color: Colors.grey.shade300, width: 2),
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 18,
-                    ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Your personal mental wellness companion with AI-powered emotional support',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Color(0xFF5A6473),
+                    fontWeight: FontWeight.w400,
                   ),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const LoginScreen()),
-                    );
-                  },
-                  child: const Text('I already have an account'),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 36),
+                FeatureRow(
+                  icon: Icons.emoji_emotions,
+                  text: 'Emotion Recognition & Voice',
+                  color: mainColor,
+                ),
+                const SizedBox(height: 16),
+                FeatureRow(
+                  icon: Icons.smart_toy,
+                  text: 'AI Mental Health Consultation',
+                  color: mainColor,
+                ),
+                const SizedBox(height: 16),
+                FeatureRow(
+                  icon: Icons.groups,
+                  text: 'Supportive Community',
+                  color: mainColor,
+                ),
+                const SizedBox(height: 36),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: mainColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      textStyle: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const SignupScreen()),
+                      );
+                    },
+                    child: const Text('Get Started'),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black87,
+                      side: BorderSide(color: Colors.grey.shade300, width: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 18,
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      );
+                    },
+                    child: const Text('I already have an account'),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),
@@ -250,4 +253,16 @@ void showCustomToast(BuildContext context, String message, {bool success = true}
   );
   overlay.insert(entry);
   Future.delayed(const Duration(seconds: 2), () => entry.remove());
+}
+
+// Global toast function using Fluttertoast
+void showToast(String message, {bool success = true}) {
+  Fluttertoast.showToast(
+    msg: message,
+    toastLength: Toast.LENGTH_SHORT,
+    gravity: ToastGravity.TOP,
+    backgroundColor: success ? const Color(0xFF43A047) : const Color(0xFFD32F2F),
+    textColor: Colors.white,
+    fontSize: 16.0,
+  );
 }

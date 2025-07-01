@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../login_screen.dart';
+import '../services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String? token;
+  const HomeScreen({super.key, this.token});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -10,6 +13,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  int _sessionCount = 0;
+  bool _loadingSessions = true;
+  String? _token;
 
   static const List<Widget> _pages = <Widget>[
     Center(child: Text('Home', style: TextStyle(fontSize: 32))),
@@ -28,6 +34,26 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(builder: (context) => const LoginScreen()),
       (route) => false,
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initAndFetchSessionCount();
+  }
+
+  Future<void> _initAndFetchSessionCount() async {
+    String? token = widget.token;
+    if (token == null || token.isEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString('jwt_token') ?? '';
+    }
+    _token = token;
+    final count = await ApiService.fetchSessionCount(token ?? '');
+    setState(() {
+      _sessionCount = count;
+      _loadingSessions = false;
+    });
   }
 
   @override
@@ -56,7 +82,19 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SizedBox(
             width: double.infinity,
             height: MediaQuery.of(context).size.height - kToolbarHeight - kBottomNavigationBarHeight,
-            child: _pages[_selectedIndex],
+            child: Column(
+              children: [
+                if (_selectedIndex == 0) ...[
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: _loadingSessions
+                        ? const CircularProgressIndicator()
+                        : Text('Total Sessions: $_sessionCount', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+                Expanded(child: _pages[_selectedIndex]),
+              ],
+            ),
           ),
         ),
       ),
