@@ -40,16 +40,16 @@ class LandingScreen extends StatelessWidget {
     final mainColor = Theme.of(context).colorScheme.primary;
     final height = MediaQuery.of(context).size.height;
     final scale = height < 500 ? (height / 700).clamp(0.6, 1.0) : 1.0;
-    final logoSize = 120.0 * scale;
-    final titleFont = 36.0 * scale;
-    final subtitleFont = 18.0 * scale;
-    final featureFont = 20.0 * scale;
-    final buttonFont = 20.0 * scale;
-    final buttonPad = 18.0 * scale;
-    final featureIcon = 32.0 * scale;
-    final featurePad = 12.0 * scale;
-    final featureRowPad = 20.0 * scale;
-    final verticalPad = (height < 500) ? 12.0 * scale : 24.0;
+    final logoSize = 80.0 * scale;
+    final titleFont = 24.0 * scale;
+    final subtitleFont = 14.0 * scale;
+    final featureFont = 15.0 * scale;
+    final buttonFont = 16.0 * scale;
+    final buttonPad = 12.0 * scale;
+    final featureIcon = 22.0 * scale;
+    final featurePad = 8.0 * scale;
+    final featureRowPad = 12.0 * scale;
+    final verticalPad = (height < 500) ? 8.0 * scale : 16.0;
 
     return Scaffold(
       body: SafeArea(
@@ -59,7 +59,7 @@ class LandingScreen extends StatelessWidget {
             child: Column(
               children: [
                 SizedBox(height: 32 * scale),
-                Icon(Icons.psychology, size: logoSize, color: mainColor),
+                Image.asset('assets/images/Logo.png', height: logoSize),
                 SizedBox(height: 24 * scale),
                 Text(
                   'FaceofMind',

@@ -121,7 +121,7 @@ class _SignupScreenState extends State<SignupScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 48),
-                  Icon(Icons.psychology, size: 80, color: mainColor),
+                  Image.asset('assets/images/Logo.png', height: 80),
                   const SizedBox(height: 16),
                   const Text(
                     'FaceofMind',
