@@ -10,6 +10,7 @@ import 'community_screen.dart';
 import 'hotlines_screen.dart';
 import 'history_screen.dart';
 import 'dart:convert';
+import 'notification_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? token;
@@ -33,6 +34,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<dynamic> _intensityChart = [];
   bool _loadingCharts = true;
   bool _refreshingCharts = false;
+  
+  // Notification count (dummy for now)
+  int _notificationCount = 2;
 
   final Map<String, Color> _emotionColors = {
     'happy': Color(0xFF5CD581),
@@ -53,11 +57,43 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _logout() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
-      (route) => false,
+  void _logout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.blue),
+            const SizedBox(width: 8),
+            const Text('Logout'),
+          ],
+        ),
+        content: const Text('Are you sure you want to log out?'),
+        actionsAlignment: MainAxisAlignment.end,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
+    if (shouldLogout == true) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -257,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Row(
           children: [
             Expanded(
-              child: Text('Dominant Emotions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+              child: Text('Emotion Analytics', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[800])),
             ),
             IconButton(
               icon: _refreshingCharts ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.refresh),
@@ -277,6 +313,70 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildAiTab(BuildContext context) {
+    final mainColor = const Color(0xFF22C55E);
+    return Center(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 32),
+            Image.asset(
+              'assets/images/Logo.png',
+              width: 220,
+              height: 220,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Scan Now to',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const Text(
+              'faceofMind',
+              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Just Be Yourself and Relax, Be At Peace',
+              style: TextStyle(fontSize: 17, color: Colors.black87),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Click The Button below.',
+              style: TextStyle(fontSize: 15, color: Colors.black54),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: 220,
+              height: 54,
+              child: ElevatedButton.icon(
+                onPressed: null, // Disabled
+                icon: const Icon(Icons.android, size: 28),
+                label: const Text('Consult with', style: TextStyle(fontSize: 20)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: mainColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 2,
+                  textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                  disabledBackgroundColor: mainColor,
+                  disabledForegroundColor: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final mainColor = Theme.of(context).colorScheme.primary;
@@ -288,6 +388,45 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text('FaceofMind', style: TextStyle(fontSize: 22 * fontScale, fontWeight: FontWeight.bold)),
         automaticallyImplyLeading: false,
         actions: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_none),
+                tooltip: 'Notifications',
+                onPressed: () {
+                  setState(() {
+                    _notificationCount = 0; // Clear notifications on open
+                  });
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationScreen()));
+                },
+              ),
+              if (_notificationCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$_notificationCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
@@ -302,7 +441,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ? _buildHomeTab(context)
           : _selectedIndex == 2
               ? _buildProfileTab(context)
-              : Center(child: Icon(Icons.smart_toy, size: 80)),
+              : _buildAiTab(context),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.white,
         selectedItemColor: mainColor,

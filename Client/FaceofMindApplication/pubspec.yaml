@@ -15,6 +15,7 @@ dependencies:
   fluttertoast: ^8.2.4
   shared_preferences: ^2.2.2
   intl: ^0.18.1
+  url_launcher: ^6.2.5
 
 dev_dependencies:
   flutter_test:
@@ -27,6 +28,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/Logo.png
+    - assets/images/qrcodegcash.png
 
 flutter_icons:
   android: true
