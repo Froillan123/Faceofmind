@@ -43,17 +43,33 @@ class _LoginScreenState extends State<LoginScreen> {
     final res = await ApiService.login(emailController.text.trim(), passwordController.text);
     if (res['success']) {
       final token = res['data']['access_token'] ?? '';
+      final userId = res['data']['user_id'] ?? res['data']['id'];
       if (token.isNotEmpty) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('jwt_token', token);
+        if (userId != null) {
+          await prefs.setInt('user_id', userId is int ? userId : int.tryParse(userId.toString()) ?? 0);
+        }
       }
-      showCustomToast(context, 'Login successful!', success: true);
       await Future.delayed(const Duration(seconds: 2)); 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => HomeScreen(token: token)),
       );
     } else {
-      showCustomToast(context, res['message'] ?? 'Login failed', success: false);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text('Login Failed'),
+          content: Text(res['message'] ?? 'Login failed'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
     setState(() { isLoading = false; });
   }

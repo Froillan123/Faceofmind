@@ -134,7 +134,15 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "expires_in": 30 * 60  # 30 minutes in seconds
+        "expires_in": 30 * 60,  # 30 minutes in seconds
+        # User info for frontend
+        "id": user.id,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "role": user.role,
+        "status": user.status,
+        "created_at": user.created_at,
     }
 
 

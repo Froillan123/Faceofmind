@@ -93,6 +93,62 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> fetchProfile(String token) async {
+    final url = Uri.parse('$baseUrl/api/v1/users/me');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    return _processResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> fetchUserById(String token, int userId) async {
+    final url = Uri.parse('$baseUrl/api/v1/users/$userId');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    return _processResponse(response);
+  }
+
+  static Future<List<dynamic>> fetchDominantEmotionChart(String token, {String window = 'week'}) async {
+    final url = Uri.parse('$baseUrl/api/v1/sessions/dominant_emotion_chart?window=$window');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body);
+    } else {
+      return [];
+    }
+  }
+
+  static Future<List<dynamic>> fetchIntensityChart(String token, {String window = 'week'}) async {
+    final url = Uri.parse('$baseUrl/api/v1/sessions/intensity_chart?window=$window');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body);
+    } else {
+      return [];
+    }
+  }
+
   static Map<String, dynamic> _processResponse(http.Response response) {
     final data = jsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
