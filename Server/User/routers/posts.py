@@ -10,7 +10,7 @@ router = APIRouter(prefix="/posts", tags=["posts"])
 
 @router.get("/", response_model=List[CommunityPostResponse])
 def get_posts(db: Session = Depends(get_db)):
-    return db.query(CommunityPost).all()
+    return db.query(CommunityPost).order_by(CommunityPost.id.desc()).all()
 
 @router.get("/{post_id}", response_model=CommunityPostResponse)
 def get_post(post_id: int, db: Session = Depends(get_db)):

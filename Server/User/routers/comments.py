@@ -13,7 +13,7 @@ def get_comments(post_id: int, db: Session = Depends(get_db)):
     post = db.query(CommunityPost).filter(CommunityPost.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    return db.query(CommunityComment).filter(CommunityComment.post_id == post_id).all()
+    return db.query(CommunityComment).filter(CommunityComment.post_id == post_id).order_by(CommunityComment.id.desc()).all()
 
 @router.post("/{post_id}/comments", response_model=CommunityCommentResponse)
 def add_comment(post_id: int, comment: CommunityCommentCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

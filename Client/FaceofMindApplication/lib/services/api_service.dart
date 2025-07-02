@@ -270,6 +270,57 @@ class ApiService {
     return _processResponse(response);
   }
 
+  static Future<Map<String, dynamic>> updateUserProfile(String token, int userId, String firstName, String lastName) async {
+    final url = Uri.parse('$baseUrl/api/v1/users/$userId');
+    final response = await http.put(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'first_name': firstName, 'last_name': lastName}),
+    );
+    return _processResponse(response);
+  }
+
+  // --- User Sessions & History ---
+  static Future<List<dynamic>> fetchUserSessions(String token, {int skip = 0, int limit = 100}) async {
+    final url = Uri.parse('$baseUrl/api/v1/sessions/?skip=$skip&limit=$limit');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data;
+      } else {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>?> fetchSessionHistory(String token, int sessionId) async {
+    final url = Uri.parse('$baseUrl/api/v1/sessions/$sessionId/history');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body);
+    } else {
+      return null;
+    }
+  }
+
   static Map<String, dynamic> _processResponse(http.Response response) {
     final data = jsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
