@@ -211,14 +211,13 @@ def get_diagnosis(
         if not facial:
             continue
         emotion = facial.emotion.lower()
-        # Placeholder: random confidence score (simulate AI model output)
-        confidence = uniform(0.5, 1.0)
-        if confidence <= 0.65:
+        # Deterministic intensity assignment
+        if emotion in ["happy", "content", "neutral"]:
             intensity = "mild"
-        elif confidence <= 0.80:
-            intensity = "moderate"
-        else:
+        elif emotion in ["sad", "angry", "depressed", "furious", "fearful", "anxious", "stressed", "overwhelmed"]:
             intensity = "severe"
+        else:
+            intensity = "moderate"
         emotion_tally[emotion] = emotion_tally.get(emotion, 0) + 1
         intensity_breakdown[intensity] += 1
         if emotion not in emotion_intensity_map:
@@ -326,13 +325,13 @@ def get_intensity_chart(
         if not facial:
             continue
         emotion = facial.emotion.lower()
-        confidence = uniform(0.5, 1.0)
-        if confidence <= 0.65:
+        # Deterministic intensity assignment
+        if emotion in ["happy", "content", "neutral"]:
             intensity = "mild"
-        elif confidence <= 0.80:
-            intensity = "moderate"
-        else:
+        elif emotion in ["sad", "angry", "depressed", "furious", "fearful", "anxious", "stressed", "overwhelmed"]:
             intensity = "severe"
+        else:
+            intensity = "moderate"
         day_map[det_date].append((emotion, intensity))
 
     chart = []

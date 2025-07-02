@@ -278,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.white,
         selectedItemColor: mainColor,
         unselectedItemColor: Colors.grey.shade400,
-        currentIndex: _selectedIndex,
+        currentIndex: _selectedIndex, 
         onTap: _onItemTapped,
         showSelectedLabels: false,
         showUnselectedLabels: false,
