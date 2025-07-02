@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'main.dart';
 import 'services/api_service.dart';
+import 'login_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -150,7 +151,26 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     );
     setState(() { isLoading = false; });
     if (res['success']) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Success'),
+          content: const Text('Password reset successfully!'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              },
+              child: const Text('OK'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     } else {
       showDialog(
         context: context,

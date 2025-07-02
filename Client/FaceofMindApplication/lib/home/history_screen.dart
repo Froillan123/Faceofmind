@@ -73,7 +73,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 const CircularProgressIndicator(),
                 const SizedBox(height: 18),
                 Text(
-                  'Viewing history...\n(ID: $sessionId)',
+                  'Viewing history...',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
@@ -381,8 +381,6 @@ class SessionHistoryDialog extends StatelessWidget {
                       'View History',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
                     ),
-                    const SizedBox(width: 10),
-                    Text('(ID: $sessionId)', style: const TextStyle(fontSize: 14, color: Colors.black54)),
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.close),
@@ -399,8 +397,6 @@ class SessionHistoryDialog extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Today', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                      const SizedBox(height: 8),
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
