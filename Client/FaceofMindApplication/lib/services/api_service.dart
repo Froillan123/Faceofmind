@@ -149,6 +149,127 @@ class ApiService {
     }
   }
 
+  // --- Community Posts & Comments ---
+  static Future<List<dynamic>> fetchPosts(String token) async {
+    final url = Uri.parse('$baseUrl/api/v1/posts/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    print('fetchPosts status: \\${response.statusCode}, body: \\${response.body}');
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data;
+      } else {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>> createPost(String token, String content) async {
+    final url = Uri.parse('$baseUrl/api/v1/posts/');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'content': content}),
+    );
+    return _processResponse(response);
+  }
+
+  static Future<List<dynamic>> fetchComments(String token, int postId) async {
+    final url = Uri.parse('$baseUrl/api/v1/posts/$postId/comments');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    print('fetchComments status: \\${response.statusCode}, body: \\${response.body}');
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return data;
+      } else {
+        return [];
+      }
+    } else {
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>> addComment(String token, int postId, String content) async {
+    final url = Uri.parse('$baseUrl/api/v1/posts/$postId/comments');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'content': content}),
+    );
+    return _processResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> editPost(String token, int postId, String content) async {
+    final url = Uri.parse('$baseUrl/api/v1/posts/$postId');
+    final response = await http.put(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'content': content}),
+    );
+    return _processResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> deletePost(String token, int postId) async {
+    final url = Uri.parse('$baseUrl/api/v1/posts/$postId');
+    final response = await http.delete(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    return _processResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> editComment(String token, int postId, int commentId, String content) async {
+    final url = Uri.parse('$baseUrl/api/v1/posts/$postId/comments/$commentId');
+    final response = await http.put(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'content': content}),
+    );
+    return _processResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> deleteComment(String token, int postId, int commentId) async {
+    final url = Uri.parse('$baseUrl/api/v1/posts/$postId/comments/$commentId');
+    final response = await http.delete(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    return _processResponse(response);
+  }
+
   static Map<String, dynamic> _processResponse(http.Response response) {
     final data = jsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
