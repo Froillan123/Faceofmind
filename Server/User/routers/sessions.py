@@ -454,10 +454,10 @@ def process_emotion(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Process emotion data and generate wellness suggestions using Gemini 1.5 Flash. Also ends the session automatically."""
+    """Process emotion data and generate 5 short, direct-to-the-point bullet suggestions (max 1 sentence each, no URLs in text). Also stores up to 5 relevant URLs (from any reputable site, not just Reddit/Quora) as a separate field. URLs are not included in the suggestion text, only in the url field and response."""
     from zoneinfo import ZoneInfo
     MANILA_TZ = ZoneInfo("Asia/Manila")
-    detection = EmotionDetection(session_id=session_id, timestamp=datetime.now(MANILA_TZ)) # Use Manila time for timestamp
+    detection = EmotionDetection(session_id=session_id, timestamp=datetime.now(MANILA_TZ))
     db.add(detection)
     db.commit()
     db.refresh(detection)
@@ -481,10 +481,12 @@ def process_emotion(
     db.commit()
     db.refresh(voice)
 
-    # 4. Generate wellness suggestion with Gemini 1.5 Flash
+    # 4. Generate 5 short, direct bullet suggestions and up to 5 reputable URLs
     suggestion_text = None
+    suggestions_list = []
+    urls_list = []
     try:
-        # Check for suicidal/self-harm keywords
+        # Prompt for 1 acknowledgment + 4 actionable tips, and up to 5 Reddit/Quora URLs
         if contains_suicidal_keywords(req.voice_content):
             prompt = (
                 "The user has expressed thoughts of suicide or self-harm. "
@@ -492,24 +494,50 @@ def process_emotion(
                 "Do NOT judge or dismiss their feelings. "
                 "Encourage them to reach out to a mental health professional or crisis hotline immediately. "
                 "Provide immediate comfort, grounding techniques, and remind them they are not alone. "
-                "Format: [Gentle acknowledgment] • [Immediate comfort] • [Crisis support suggestion] • [Encouragement to seek help]"
+                "Format: 1 direct, empathetic acknowledgment/comforting statement as the first bullet (address the user's feelings and situation), then 4 short, direct-to-the-point actionable bullet points (max 1 sentence each, no URLs in text). "
+                "After the suggestions, provide up to 5 relevant, working URLs from Reddit or Quora only, one per line, not included in the suggestion text. Do not include 'url not found' or broken links."
                 f"\nUser's message: '{req.voice_content}'"
             )
         else:
-            prompt = build_gemini_prompt(req.emotion.lower(), req.voice_content)
-        # Try Gemini
+            prompt = (
+                build_gemini_prompt(req.emotion.lower(), req.voice_content) +
+                "\nFormat the suggestions as 5 bullet points: the first bullet is a direct, empathetic acknowledgment/comforting statement for the user's feelings and situation, and the next 4 are short, actionable coping tips (max 1 sentence each, no URLs in text). After the suggestions, provide up to 5 relevant, working URLs from Reddit or Quora only, one per line, not included in the suggestion text. Do not include 'url not found' or broken links. Example output:\n- Acknowledgment.\n- Tip 1.\n- Tip 2.\n- Tip 3.\n- Tip 4.\n[URLs start here, one per line]"
+            )
         genai.configure(api_key=settings.gemini_api_key)
         model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(prompt)
-        suggestion_text = format_gemini_response(response.text, req.emotion.lower())
+        suggestion_text = response.text.strip()
     except Exception as e:
-        # Fallback to OpenRouter GPT-4o
         suggestion_text = call_openrouter_gpt4o(prompt)
 
-    # 5. Store suggestion
+    # Parse bullet suggestions and URLs (split by lines)
+    lines = [l.strip() for l in suggestion_text.split('\n') if l.strip()]
+    suggestions_list = []
+    urls_list = []
+    for line in lines:
+        if line.startswith('- ') or line.startswith('• '):
+            suggestions_list.append(line[2:].strip())
+        elif line.startswith('http'):
+            urls_list.append(line)
+    # Fallback: If no suggestions found, take lines before first URL (up to 5)
+    if not suggestions_list:
+        for line in lines:
+            if line.startswith('http'):
+                break
+            suggestions_list.append(line)
+            if len(suggestions_list) == 5:
+                break
+    # Only keep up to 5 suggestions and 5 URLs
+    suggestions_list = suggestions_list[:5]
+    # Only keep Reddit/Quora URLs
+    urls_list = [u for u in urls_list if ('reddit.com' in u or 'quora.com' in u)][:5]
+    url_field = ','.join(urls_list) if urls_list else None
+
+    # 5. Store suggestion (as joined bullet points, no URLs)
     suggestion = WellnessSuggestion(
         detection_id=detection.id,
-        suggestion=suggestion_text
+        suggestion='\n'.join(['- ' + s for s in suggestions_list]),
+        url=url_field
     )
     db.add(suggestion)
     db.commit()
@@ -524,17 +552,13 @@ def process_emotion(
         session.end_time = datetime.now(MANILA_TZ)
         db.commit()
 
-    parts = suggestion_text.split('•')
-    acknowledgment = parts[0].strip() if parts else ""
-    suggestions_list = [s.strip() for s in parts[1:] if s.strip()]
-
     return {
         "session_id": session_id,
         "emotion": req.emotion,
         "voice_content": req.voice_content,
-        "acknowledgment": acknowledgment,
         "suggestions": suggestions_list,
-        "emotion_color": calculated_emotion_color
+        "emotion_color": calculated_emotion_color,
+        "urls": urls_list
     }
 
 def generate_wellness_response_with_gemini(emotion: str, content: str, db: Session) -> str:
@@ -739,7 +763,7 @@ def get_session_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get complete session history with all related data."""
+    """Get complete session history with all related data. Also returns a list of relevant URLs that might help the user."""
     session = db.query(SessionModel).filter(
         SessionModel.id == session_id,
         SessionModel.user_id == current_user.id
@@ -752,6 +776,7 @@ def get_session_history(
     ).all()
     
     detection_data = []
+    all_urls = set()
     for det in detections: 
         facial = db.query(FacialData).filter(
             FacialData.detection_id == det.id
@@ -784,16 +809,32 @@ def get_session_history(
         history_suggestions_list = []
         wellness_suggestion_response = None
         if wellness and wellness.suggestion:
-            parts = wellness.suggestion.split('•')
-            history_acknowledgment = parts[0].strip() if parts else ""
-            history_suggestions_list = [s.strip() for s in parts[1:] if s.strip()]
+            # Split by newlines and filter for lines that look like bullets
+            lines = [l.strip() for l in wellness.suggestion.split('\n') if l.strip()]
+            bullets = []
+            for line in lines:
+                if line.startswith('- ') or line.startswith('- *') or line.startswith('•'):
+                    # Remove '- ', '- *', or '•' from start
+                    clean = line.lstrip('-*• ').strip()
+                    if clean:
+                        bullets.append(clean)
+            history_acknowledgment = bullets[0] if bullets else ""
+            history_suggestions_list = bullets[1:] if len(bullets) > 1 else []
+            # Parse URLs from the url field (comma-separated)
+            url_list = [u.strip() for u in wellness.url.split(',')] if wellness.url else []
             wellness_suggestion_response = WellnessSuggestionResponse(
                 id=wellness.id,
                 detection_id=wellness.detection_id,
                 suggestion=wellness.suggestion,
                 acknowledgment=history_acknowledgment,
-                suggestions=history_suggestions_list
+                suggestions=history_suggestions_list,
+                url=url_list
             )
+            # Collect URLs from the url field (comma-separated)
+            for u in wellness.url.split(','):
+                u = u.strip()
+                if u:
+                    all_urls.add(u)
 
         detection_data.append(EmotionDetectionWithData(
             id=det.id,
@@ -806,10 +847,14 @@ def get_session_history(
             facial_emotion=facial_emotion_str 
         ))
 
-    return SessionWithDetections(
-        id=session.id,
-        user_id=session.user_id,
-        start_time=session.start_time,
-        end_time=session.end_time,
-        emotion_detections=detection_data
-    )
+    # Return the session with detections and relevant URLs
+    return {
+        **SessionWithDetections(
+            id=session.id,
+            user_id=session.user_id,
+            start_time=session.start_time,
+            end_time=session.end_time,
+            emotion_detections=detection_data
+        ).dict(),
+        "relevant_urls": list(all_urls)
+    }
