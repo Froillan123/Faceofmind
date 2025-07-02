@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -341,137 +342,193 @@ class SessionHistoryDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mainColor = const Color(0xFF5CD581);
+    final accentColor = const Color(0xFFe3fcec);
+    final borderColor = Colors.grey[300]!;
     final emotionDetections = session['emotion_detections'] as List<dynamic>? ?? [];
-    final emotionRaw = emotionDetections.isNotEmpty ? (emotionDetections[0]['facial_data']?['emotion']?.toString() ?? '') : '';
+    final detection = emotionDetections.isNotEmpty ? emotionDetections[0] : null;
+    final emotionRaw = detection?['facial_data']?['emotion']?.toString() ?? '';
     final emotion = emotionRaw.capitalize();
     final emoji = _emojiForEmotion(emotionRaw);
-    final time = emotionDetections.isNotEmpty ? DateFormat('HH:mm').format(DateTime.tryParse(emotionDetections[0]['timestamp'] ?? '') ?? DateTime.now()) : '';
-    final acknowledgment = emotionDetections.isNotEmpty ? (emotionDetections[0]['wellness_suggestions']?['acknowledgment'] ?? '') : '';
-    final suggestions = emotionDetections.isNotEmpty ? (emotionDetections[0]['wellness_suggestions']?['suggestions'] as List<dynamic>? ?? []) : [];
-    final note = emotionDetections.isNotEmpty ? (emotionDetections[0]['voice_data']?['content'] ?? '') : '';
+    final time = detection != null ? DateFormat('HH:mm').format(DateTime.tryParse(detection['timestamp'] ?? '') ?? DateTime.now()) : '';
+    final acknowledgment = detection?['wellness_suggestions']?['acknowledgment'] ?? '';
+    final suggestions = detection?['wellness_suggestions']?['suggestions'] as List<dynamic>? ?? [];
+    final note = detection?['voice_data']?['content'] ?? '';
+    final urls = detection?['wellness_suggestions']?['url'] as List<dynamic>? ?? [];
     return Material(
-      color: Colors.transparent,
-      child: Center(
-        child: Container(
-          constraints: const BoxConstraints(
-            maxWidth: 420,
-            minWidth: 0,
-            maxHeight: 600,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+      color: Colors.black.withOpacity(0.25),
+      child: Container(
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height,
+        color: Colors.white,
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Row(
+                children: [
+                  const Text(
+                    'View History',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Stationary header
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Row(
-                  children: [
-                    Text(
-                      'View History',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              // Scrollable content
-              Expanded(
+            ),
+            const Divider(height: 1),
+            // Scrollable content
+            Expanded(
+              child: Scrollbar(
+                thumbVisibility: true,
+                thickness: 6,
+                radius: const Radius.circular(8),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        padding: const EdgeInsets.all(18),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Emotion and time
+                        Row(
                           children: [
-                            Row(
-                              children: [
-                                Text('$emoji $emotion', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 32)),
-                                const SizedBox(width: 12),
-                                Text(time, style: const TextStyle(fontSize: 15, color: Colors.black54)),
-                                const Spacer(),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            if (acknowledgment.isNotEmpty)
-                              Text('You felt $acknowledgment', style: const TextStyle(fontWeight: FontWeight.w600)),
-                            if (note.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              RichText(
-                                text: TextSpan(
-                                  style: const TextStyle(color: Colors.black87, fontSize: 15),
-                                  children: [
-                                    const TextSpan(text: 'Content: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    TextSpan(text: note),
-                                  ],
-                                ),
-                              ),
-                            ],
-                            if (suggestions.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: mainColor.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: mainColor.withOpacity(0.3)),
-                                ),
-                                padding: const EdgeInsets.all(14),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.tips_and_updates, color: Colors.amber, size: 22),
-                                        const SizedBox(width: 8),
-                                        Text('Wellness Suggestions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: mainColor)),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ...suggestions.map((s) => Padding(
-                                          padding: const EdgeInsets.only(bottom: 6),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              const Text('• ', style: TextStyle(fontSize: 16)),
-                                              Expanded(child: Text(s, style: const TextStyle(fontSize: 15))),
-                                            ],
-                                          ),
-                                        )),
-                                  ],
-                                ),
-                              ),
-                            ],
+                            Text('$emoji $emotion', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 32)),
+                            const SizedBox(width: 12),
+                            Text(time, style: const TextStyle(fontSize: 15, color: Colors.black54)),
+                            const Spacer(),
                           ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        // Acknowledgment highlight
+                        if (acknowledgment.isNotEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                            margin: const EdgeInsets.only(bottom: 14),
+                            decoration: BoxDecoration(
+                              color: accentColor,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: mainColor.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              acknowledgment,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                            ),
+                          ),
+                        // Content in white box
+                        if (note.isNotEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                            margin: const EdgeInsets.only(bottom: 18),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: borderColor),
+                            ),
+                            child: RichText(
+                              text: TextSpan(
+                                style: const TextStyle(color: Colors.black87, fontSize: 15),
+                                children: [
+                                  const TextSpan(text: 'Content: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  TextSpan(text: note),
+                                ],
+                              ),
+                            ),
+                          ),
+                        // Wellness Suggestions
+                        if (suggestions.isNotEmpty) ...[
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: mainColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: mainColor.withOpacity(0.3)),
+                            ),
+                            padding: const EdgeInsets.all(14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.tips_and_updates, color: Colors.amber, size: 22),
+                                    const SizedBox(width: 8),
+                                    Text('Wellness Suggestions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: mainColor)),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                ...suggestions.map((s) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 6),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text('• ', style: TextStyle(fontSize: 16)),
+                                          Expanded(child: Text(s, style: const TextStyle(fontSize: 15))),
+                                        ],
+                                      ),
+                                    )),
+                              ],
+                            ),
+                          ),
+                        ],
+                        // URLS
+                        if (urls.isNotEmpty) ...[
+                          const SizedBox(height: 18),
+                          const Text('Related Links', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 6),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: urls.map<Widget>((u) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: InkWell(
+                                onTap: () async {
+                                  await launchUrl(Uri.parse(u.toString()));
+                                },
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.link, size: 18, color: Colors.blueGrey),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        u.toString(),
+                                        style: TextStyle(
+                                          color: Colors.blue[700],
+                                          decoration: TextDecoration.underline,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )).toList(),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                        // Scroll cue
+                        Center(
+                          child: Column(
+                            children: [
+                              Icon(Icons.swipe, color: Colors.grey[400], size: 28),
+                              Text('Scroll for more', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

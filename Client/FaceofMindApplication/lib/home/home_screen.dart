@@ -330,13 +330,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Scan Now to',
+              'Scan Now',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const Text(
-              'faceofMind',
-              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 18),
@@ -358,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ElevatedButton.icon(
                 onPressed: null, // Disabled
                 icon: const Icon(Icons.android, size: 28),
-                label: const Text('Consult with', style: TextStyle(fontSize: 20)),
+                label: const Text('Consult Now!', style: TextStyle(fontSize: 20)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: mainColor,
                   foregroundColor: Colors.white,
