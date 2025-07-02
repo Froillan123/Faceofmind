@@ -38,6 +38,19 @@ class LandingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mainColor = Theme.of(context).colorScheme.primary;
+    final height = MediaQuery.of(context).size.height;
+    final scale = height < 500 ? (height / 700).clamp(0.6, 1.0) : 1.0;
+    final logoSize = 120.0 * scale;
+    final titleFont = 36.0 * scale;
+    final subtitleFont = 18.0 * scale;
+    final featureFont = 20.0 * scale;
+    final buttonFont = 20.0 * scale;
+    final buttonPad = 18.0 * scale;
+    final featureIcon = 32.0 * scale;
+    final featurePad = 12.0 * scale;
+    final featureRowPad = 20.0 * scale;
+    final verticalPad = (height < 500) ? 12.0 * scale : 24.0;
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -45,62 +58,72 @@ class LandingScreen extends StatelessWidget {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                const SizedBox(height: 48),
-                // TODO: Replace this Icon with your logo image.
-                // To use your own image, place it in the assets/images/ directory (see instructions below).
-                Icon(Icons.psychology, size: 120, color: mainColor),
-                const SizedBox(height: 32),
-                const Text(
+                SizedBox(height: 32 * scale),
+                Icon(Icons.psychology, size: logoSize, color: mainColor),
+                SizedBox(height: 24 * scale),
+                Text(
                   'FaceofMind',
                   style: TextStyle(
-                    fontSize: 36,
+                    fontSize: titleFont,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1.2,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
-                const Text(
+                SizedBox(height: 10 * scale),
+                Text(
                   'Your personal mental wellness companion with AI-powered emotional support',
                   style: TextStyle(
-                    fontSize: 18,
-                    color: Color(0xFF5A6473),
+                    fontSize: subtitleFont,
+                    color: const Color(0xFF5A6473),
                     fontWeight: FontWeight.w400,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 36),
+                SizedBox(height: 24 * scale),
                 FeatureRow(
                   icon: Icons.emoji_emotions,
                   text: 'Emotion Recognition & Voice',
                   color: mainColor,
+                  fontSize: featureFont,
+                  iconSize: featureIcon,
+                  iconPad: featurePad,
+                  rowPad: featureRowPad,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: verticalPad),
                 FeatureRow(
                   icon: Icons.smart_toy,
                   text: 'AI Mental Health Consultation',
                   color: mainColor,
+                  fontSize: featureFont,
+                  iconSize: featureIcon,
+                  iconPad: featurePad,
+                  rowPad: featureRowPad,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: verticalPad),
                 FeatureRow(
                   icon: Icons.groups,
                   text: 'Supportive Community',
                   color: mainColor,
+                  fontSize: featureFont,
+                  iconSize: featureIcon,
+                  iconPad: featurePad,
+                  rowPad: featureRowPad,
                 ),
-                const SizedBox(height: 36),
+                SizedBox(height: 24 * scale),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: mainColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      padding: EdgeInsets.symmetric(vertical: buttonPad),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      textStyle: const TextStyle(
+                      textStyle: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 20,
+                        fontSize: buttonFont,
                       ),
                     ),
                     onPressed: () {
@@ -111,19 +134,19 @@ class LandingScreen extends StatelessWidget {
                     child: const Text('Get Started'),
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 10 * scale),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.black87,
                       side: BorderSide(color: Colors.grey.shade300, width: 2),
-                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      padding: EdgeInsets.symmetric(vertical: buttonPad),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      textStyle: const TextStyle(
-                        fontSize: 18,
+                      textStyle: TextStyle(
+                        fontSize: buttonFont * 0.9,
                       ),
                     ),
                     onPressed: () {
@@ -134,7 +157,7 @@ class LandingScreen extends StatelessWidget {
                     child: const Text('I already have an account'),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: 12 * scale),
               ],
             ),
           ),
@@ -148,7 +171,11 @@ class FeatureRow extends StatelessWidget {
   final IconData icon;
   final String text;
   final Color color;
-  const FeatureRow({super.key, required this.icon, required this.text, required this.color});
+  final double? fontSize;
+  final double? iconSize;
+  final double? iconPad;
+  final double? rowPad;
+  const FeatureRow({super.key, required this.icon, required this.text, required this.color, this.fontSize, this.iconSize, this.iconPad, this.rowPad});
 
   @override
   Widget build(BuildContext context) {
@@ -159,16 +186,16 @@ class FeatureRow extends StatelessWidget {
             color: color.withOpacity(0.15),
             shape: BoxShape.circle,
           ),
-          padding: const EdgeInsets.all(12),
-          child: Icon(icon, color: color, size: 32),
+          padding: EdgeInsets.all(iconPad ?? 12),
+          child: Icon(icon, color: color, size: iconSize ?? 32),
         ),
-        const SizedBox(width: 20),
+        SizedBox(width: rowPad ?? 20),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
-              fontSize: 20,
-              color: Color(0xFF3A3A3A),
+            style: TextStyle(
+              fontSize: fontSize ?? 20,
+              color: const Color(0xFF3A3A3A),
               fontWeight: FontWeight.w400,
             ),
           ),

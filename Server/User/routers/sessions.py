@@ -96,14 +96,14 @@ def summarize_suggestion(suggestion: str) -> str:
 @router.get("/", response_model=List[SessionOverview])
 def get_user_sessions(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 5,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """Get all sessions for the current user, with dominant emotion and brief suggestion."""
     sessions = db.query(SessionModel).filter(
         SessionModel.user_id == current_user.id
-    ).offset(skip).limit(limit).all()
+    ).order_by(SessionModel.start_time.desc()).offset(skip).limit(limit).all()
 
     print(f"[DEBUG] User: {current_user.email} (id={current_user.id}), Sessions found: {len(sessions)}")
 

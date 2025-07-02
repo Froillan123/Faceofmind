@@ -203,22 +203,51 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 32),
                 SizedBox(
-                  width: double.infinity,
+                  width: 180,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: mainColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                      textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                     ),
-                    onPressed: () {},
+                    onPressed: () => _showEditProfileModal(context),
                     child: const Text('EDIT PROFILE'),
                   ),
                 ),
               ],
             ),
           );
+  }
+
+  void _showEditProfileModal(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id');
+    final result = await showDialog<Map<String, String>?>(
+      context: context,
+      builder: (context) => _EditProfileDialog(
+        email: _email ?? '',
+        firstName: _firstName ?? '',
+        lastName: _lastName ?? '',
+      ),
+    );
+    if (result != null && userId != null) {
+      final res = await ApiService.updateUserProfile(_token ?? '', userId, result['first_name']!, result['last_name']!);
+      if (res['success'] == true) {
+        setState(() {
+          _firstName = result['first_name'];
+          _lastName = result['last_name'];
+        });
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully!')));
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message'] ?? 'Failed to update profile')));
+        }
+      }
+    }
   }
 
   Widget _buildHomeTab(BuildContext context) {
@@ -278,7 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.white,
         selectedItemColor: mainColor,
         unselectedItemColor: Colors.grey.shade400,
-        currentIndex: _selectedIndex, 
+        currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         showSelectedLabels: false,
         showUnselectedLabels: false,
@@ -297,6 +326,87 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _EditProfileDialog extends StatefulWidget {
+  final String email;
+  final String firstName;
+  final String lastName;
+  const _EditProfileDialog({super.key, required this.email, required this.firstName, required this.lastName});
+
+  @override
+  State<_EditProfileDialog> createState() => _EditProfileDialogState();
+}
+
+class _EditProfileDialogState extends State<_EditProfileDialog> {
+  late TextEditingController _firstNameController;
+  late TextEditingController _lastNameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _firstNameController = TextEditingController(text: widget.firstName);
+    _lastNameController = TextEditingController(text: widget.lastName);
+  }
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
+      title: const Text('Edit Profile'),
+      content: SingleChildScrollView(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _firstNameController,
+              decoration: const InputDecoration(labelText: 'First Name'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _lastNameController,
+              decoration: const InputDecoration(labelText: 'Last Name'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: TextEditingController(text: widget.email),
+              readOnly: true,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.pop(context);
+            });
+          },
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.pop(context, {
+                'first_name': _firstNameController.text.trim(),
+                'last_name': _lastNameController.text.trim(),
+              });
+            });
+          },
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 } 
