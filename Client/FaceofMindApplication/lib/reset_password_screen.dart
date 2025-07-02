@@ -35,18 +35,70 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() { isLoading = false; });
     if (res['success']) {
       setState(() { sent = true; });
-      showCustomToast(context, 'Reset code sent to your email!', success: true);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Reset Code Sent'),
+          content: const Text('Reset code sent to your email!'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     } else {
-      showCustomToast(context, res['message'] ?? 'Failed to send reset code', success: false);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: Text(res['message'] ?? 'Failed to send reset code'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     }
   }
 
   void _verifyCode() {
     if (codeController.text.length == 6) {
       setState(() { codeVerified = true; });
-      showCustomToast(context, 'Code verified! Enter new password.', success: true);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Code Verified'),
+          content: const Text('Code verified! Enter new password.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     } else {
-      showCustomToast(context, 'Invalid code', success: false);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Invalid Code'),
+          content: const Text('Invalid code'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     }
   }
 
@@ -57,11 +109,37 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       confirmPasswordValid = passwordController.text == confirmPasswordController.text;
     });
     if (!passwordValid) {
-      showCustomToast(context, passwordError!, success: false);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Invalid Password'),
+          content: Text(passwordError!),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
       return;
     }
     if (!confirmPasswordValid) {
-      showCustomToast(context, 'Passwords do not match', success: false);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Password Mismatch'),
+          content: const Text('Passwords do not match'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
       return;
     }
     setState(() { isLoading = true; });
@@ -72,10 +150,22 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     );
     setState(() { isLoading = false; });
     if (res['success']) {
-      showCustomToast(context, 'Password reset successful! Please login.', success: true);
       Navigator.of(context).popUntil((route) => route.isFirst);
     } else {
-      showCustomToast(context, res['message'] ?? 'Failed to reset password', success: false);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: Text(res['message'] ?? 'Failed to reset password'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     }
   }
 

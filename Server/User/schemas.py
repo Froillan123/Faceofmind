@@ -248,6 +248,14 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+    # Add user info fields for login response
+    id: Optional[int] = None
+    email: Optional[EmailStr] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    role: Optional[str] = None
+    status: Optional[UserStatus] = None
+    created_at: Optional[datetime] = None
 
 
 class RefreshTokenRequest(BaseModel):

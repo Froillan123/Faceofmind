@@ -24,17 +24,42 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
 
   Future<void> _verifyOtp() async {
     if (_otpValue.length != 6) {
-      Fluttertoast.showToast(msg: 'Enter all 6 digits', backgroundColor: Colors.red);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text('Invalid OTP'),
+          content: const Text('Enter all 6 digits'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
       return;
     }
     setState(() => isLoading = true);
     final res = await ApiService.verifyOtp(widget.email, _otpValue);
     setState(() => isLoading = false);
     if (res['success']) {
-      Fluttertoast.showToast(msg: 'OTP verified! You can now login.', backgroundColor: Colors.green);
       Navigator.of(context).popUntil((route) => route.isFirst); // Go back to login
     } else {
-      Fluttertoast.showToast(msg: res['message'] ?? 'OTP verification failed', backgroundColor: Colors.red);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text('OTP Verification Failed'),
+          content: Text(res['message'] ?? 'OTP verification failed'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
   }
 

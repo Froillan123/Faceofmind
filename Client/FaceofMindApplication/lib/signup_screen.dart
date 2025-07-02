@@ -80,7 +80,6 @@ class _SignupScreenState extends State<SignupScreen> {
     );
     setState(() { isLoading = false; });
     if (res['success']) {
-      showCustomToast(context, 'Registration successful! Check your email for OTP.', success: true);
       passwordController.clear();
       firstNameController.clear();
       lastNameController.clear();
@@ -89,7 +88,20 @@ class _SignupScreenState extends State<SignupScreen> {
         MaterialPageRoute(builder: (context) => VerifyOtpScreen(email: email)),
       );
     } else {
-      showCustomToast(context, res['message'] ?? 'Registration failed', success: false);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Text('Registration Failed'),
+          content: Text(res['message'] ?? 'Registration failed'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
