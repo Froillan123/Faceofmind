@@ -99,6 +99,7 @@ class WellnessSuggestion(Base):
     id = Column(Integer, primary_key=True, index=True)
     detection_id = Column(Integer, ForeignKey("emotion_detections.id"), nullable=False)
     suggestion = Column(Text, nullable=False)
+    url = Column(Text, nullable=True)  # Comma-separated URLs (up to 3) for relevant Reddit/Quora discussions per suggestion
 
     # Relationships
     detection = relationship("EmotionDetection", back_populates="wellness_suggestions")

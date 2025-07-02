@@ -63,6 +63,7 @@ class Feedback(models.Model):
 class WellnessSuggestion(models.Model):
     detection = models.ForeignKey(EmotionDetection, on_delete=models.CASCADE)
     suggestion = models.TextField()
+    url = models.TextField()
 
     class Meta:
         db_table = "wellness_suggestions"

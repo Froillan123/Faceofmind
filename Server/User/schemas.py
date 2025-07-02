@@ -158,6 +158,7 @@ class WellnessSuggestionResponse(WellnessSuggestionBase):
     # Added for frontend display derived from the suggestion string
     acknowledgment: str = ""
     suggestions: List[str] = []
+    url: List[str] = []
 
     class Config:
         orm_mode = True
