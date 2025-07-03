@@ -1,17 +1,16 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Mobile Menu Toggle
-    const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
-    const nav = document.querySelector('nav ul');
-    
-    if (mobileMenuToggle && nav) {
-        mobileMenuToggle.addEventListener('click', function() {
+    // Hamburger Menu Toggle
+    const menuIcon = document.getElementById('menu-icon');
+    const navbar = document.querySelector('.navbar');
+    if (menuIcon && navbar) {
+        menuIcon.addEventListener('click', function() {
             this.classList.toggle('active');
-            nav.classList.toggle('active');
+            navbar.classList.toggle('active');
         });
     }
 
     // Smooth scrolling for anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    document.querySelectorAll('.navbar a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
             e.preventDefault();
             const target = document.querySelector(this.getAttribute('href'));
@@ -20,6 +19,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     top: target.offsetTop - 80,
                     behavior: 'smooth'
                 });
+            }
+            // Close mobile menu after click
+            if (navbar && navbar.classList.contains('active')) {
+                navbar.classList.remove('active');
+                if (menuIcon) menuIcon.classList.remove('active');
             }
         });
     });
@@ -53,6 +57,23 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 16);
         });
     }
+
+    // TAB FUNCTIONALITY FIX
+    document.querySelectorAll('.feature-tabs').forEach(tabGroup => {
+        const tabButtons = tabGroup.querySelectorAll('.tab-button');
+        const tabPanes = tabGroup.querySelectorAll('.tab-pane');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active from all buttons and panes
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabPanes.forEach(pane => pane.classList.remove('active'));
+                // Add active to clicked button and corresponding pane
+                this.classList.add('active');
+                const pane = tabGroup.querySelector(`#${this.dataset.tab}`);
+                if (pane) pane.classList.add('active');
+            });
+        });
+    });
 
     // Initialize particles.js
     if (typeof particlesJS !== 'undefined') {
