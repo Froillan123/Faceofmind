@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.1.2:9000'; // Updated to LAN IP for device/emulator access
+  static const String baseUrl = 'https://faceofmind.onrender.com';
+
+  static Function()? onJwtExpired;
 
   static Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$baseUrl/api/v1/auth/login');
@@ -321,6 +323,52 @@ class ApiService {
     }
   }
 
+  // --- Session Management for ConsultPage ---
+  static Future<Map<String, dynamic>?> createSession(String token) async {
+    final url = Uri.parse('$baseUrl/api/v1/sessions/');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: '{}',
+    );
+    return _processResponse(response);
+  }
+
+  static Future<Map<String, dynamic>?> processEmotion(String token, String sessionId, String emotion, String voiceContent) async {
+    final url = Uri.parse('$baseUrl/api/v1/sessions/$sessionId/process_emotion');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'emotion': emotion,
+        'voice_content': voiceContent,
+      }),
+    );
+    return _processResponse(response);
+  }
+
+  static Future<Map<String, dynamic>?> submitFeedback(String token, String sessionId, String comment, int rating) async {
+    final url = Uri.parse('$baseUrl/api/v1/sessions/$sessionId/feedback');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'comment': comment,
+        'rating': rating,
+      }),
+    );
+    return _processResponse(response);
+  }
+
   static Map<String, dynamic> _processResponse(http.Response response) {
     final data = jsonDecode(response.body);
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -332,5 +380,13 @@ class ApiService {
         'data': data
       };
     }
+  }
+
+  static Future<http.Response> _handleResponse(http.Response response) async {
+    if (response.statusCode == 401) {
+      // JWT expired or invalid
+      if (onJwtExpired != null) onJwtExpired!();
+    }
+    return response;
   }
 } 

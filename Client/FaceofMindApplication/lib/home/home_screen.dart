@@ -11,6 +11,7 @@ import 'hotlines_screen.dart';
 import 'history_screen.dart';
 import 'dart:convert';
 import 'notification_screen.dart';
+import 'consult_page.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? token;
@@ -99,6 +100,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    ApiService.onJwtExpired = () {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Session expired. Please log in again.')),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    };
     _initAndFetchData();
     _fetchCharts();
   }
@@ -235,7 +247,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 24),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Total Sessions: $_sessionCount', style: TextStyle(fontSize: 18, color: mainColor, fontWeight: FontWeight.w500)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Total Sessions: $_sessionCount', style: TextStyle(fontSize: 18, color: mainColor, fontWeight: FontWeight.w500)),
+                      IconButton(
+                        icon: Icon(Icons.refresh, color: mainColor, size: 20),
+                        tooltip: 'Refresh Sessions',
+                        onPressed: () async {
+                          setState(() => _loadingSessions = true);
+                          final count = await ApiService.fetchSessionCount(_token ?? '');
+                          setState(() {
+                            _sessionCount = count;
+                            _loadingSessions = false;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 32),
                 SizedBox(
@@ -346,12 +375,27 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 15, color: Colors.black54),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Color(0xFF5CD581).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Hold the mic if you want to talk, and release it for the AI to respond.',
+                style: TextStyle(fontSize: 15, color: Color(0xFF22C55E), fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 20),
             SizedBox(
-              width: 220,
+              width: MediaQuery.of(context).size.width * 0.8,
               height: 54,
               child: ElevatedButton.icon(
-                onPressed: null, // Disabled
+                onPressed: () {
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ConsultPage()));
+                },
                 icon: const Icon(Icons.android, size: 28),
                 label: const Text('Consult Now!', style: TextStyle(fontSize: 20)),
                 style: ElevatedButton.styleFrom(

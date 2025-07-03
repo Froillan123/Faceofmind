@@ -7,7 +7,7 @@ import 'login_screen.dart';
 import 'signup_screen.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
-void main() {
+Future<void> main() async {
   runApp(const MyApp());
 }
 
