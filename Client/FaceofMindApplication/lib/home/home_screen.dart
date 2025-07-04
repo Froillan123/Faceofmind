@@ -192,30 +192,13 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32),
             child: Column(
               children: [
-                Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundColor: Colors.grey.shade100,
-                      child: Text(
-                        initials.toUpperCase(),
-                        style: TextStyle(fontSize: 48, color: mainColor, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 8,
-                      right: 8,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
-                        ),
-                        child: Icon(Icons.camera_alt, color: mainColor, size: 28),
-                      ),
-                    ),
-                  ],
+                CircleAvatar(
+                  radius: 60,
+                  backgroundColor: Colors.grey.shade100,
+                  child: Text(
+                    initials.toUpperCase(),
+                    style: TextStyle(fontSize: 48, color: mainColor, fontWeight: FontWeight.w600),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Text(

@@ -40,7 +40,7 @@ class LandingScreen extends StatelessWidget {
     final mainColor = Theme.of(context).colorScheme.primary;
     final height = MediaQuery.of(context).size.height;
     final scale = height < 500 ? (height / 700).clamp(0.6, 1.0) : 1.0;
-    final logoSize = 80.0 * scale;
+    final logoSize = 150.0;
     final titleFont = 24.0 * scale;
     final subtitleFont = 14.0 * scale;
     final featureFont = 15.0 * scale;
@@ -53,112 +53,118 @@ class LandingScreen extends StatelessWidget {
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                SizedBox(height: 32 * scale),
-                Image.asset('assets/images/Logo.png', height: logoSize),
-                SizedBox(height: 24 * scale),
-                Text(
-                  'FaceofMind',
-                  style: TextStyle(
-                    fontSize: titleFont,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: 32 * scale),
+                  Center(
+                    child: Image.asset('assets/images/Logo.png', height: logoSize),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 10 * scale),
-                Text(
-                  'Your personal mental wellness companion with AI-powered emotional support',
-                  style: TextStyle(
-                    fontSize: subtitleFont,
-                    color: const Color(0xFF5A6473),
-                    fontWeight: FontWeight.w400,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 24 * scale),
-                FeatureRow(
-                  icon: Icons.emoji_emotions,
-                  text: 'Emotion Recognition & Voice',
-                  color: mainColor,
-                  fontSize: featureFont,
-                  iconSize: featureIcon,
-                  iconPad: featurePad,
-                  rowPad: featureRowPad,
-                ),
-                SizedBox(height: verticalPad),
-                FeatureRow(
-                  icon: Icons.smart_toy,
-                  text: 'AI Mental Health Consultation',
-                  color: mainColor,
-                  fontSize: featureFont,
-                  iconSize: featureIcon,
-                  iconPad: featurePad,
-                  rowPad: featureRowPad,
-                ),
-                SizedBox(height: verticalPad),
-                FeatureRow(
-                  icon: Icons.groups,
-                  text: 'Supportive Community',
-                  color: mainColor,
-                  fontSize: featureFont,
-                  iconSize: featureIcon,
-                  iconPad: featurePad,
-                  rowPad: featureRowPad,
-                ),
-                SizedBox(height: 24 * scale),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: mainColor,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: buttonPad),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      textStyle: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: buttonFont,
-                      ),
+                  SizedBox(height: 32 * scale),
+                  Text(
+                    'FaceofMind',
+                    style: TextStyle(
+                      fontSize: titleFont,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.2,
                     ),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const SignupScreen()),
-                      );
-                    },
-                    child: const Text('Get Started'),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                SizedBox(height: 10 * scale),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black87,
-                      side: BorderSide(color: Colors.grey.shade300, width: 2),
-                      padding: EdgeInsets.symmetric(vertical: buttonPad),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      textStyle: TextStyle(
-                        fontSize: buttonFont * 0.9,
-                      ),
+                  SizedBox(height: 10 * scale),
+                  Text(
+                    'Your personal mental wellness companion with AI-powered emotional support',
+                    style: TextStyle(
+                      fontSize: subtitleFont,
+                      color: const Color(0xFF5A6473),
+                      fontWeight: FontWeight.w400,
                     ),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
-                      );
-                    },
-                    child: const Text('I already have an account'),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                SizedBox(height: 12 * scale),
-              ],
+                  SizedBox(height: 24 * scale),
+                  FeatureRow(
+                    icon: Icons.emoji_emotions,
+                    text: 'Emotion Recognition & Voice',
+                    color: mainColor,
+                    fontSize: featureFont,
+                    iconSize: featureIcon,
+                    iconPad: featurePad,
+                    rowPad: featureRowPad,
+                  ),
+                  SizedBox(height: verticalPad),
+                  FeatureRow(
+                    icon: Icons.smart_toy,
+                    text: 'AI Mental Health Consultation',
+                    color: mainColor,
+                    fontSize: featureFont,
+                    iconSize: featureIcon,
+                    iconPad: featurePad,
+                    rowPad: featureRowPad,
+                  ),
+                  SizedBox(height: verticalPad),
+                  FeatureRow(
+                    icon: Icons.groups,
+                    text: 'Supportive Community',
+                    color: mainColor,
+                    fontSize: featureFont,
+                    iconSize: featureIcon,
+                    iconPad: featurePad,
+                    rowPad: featureRowPad,
+                  ),
+                  SizedBox(height: 24 * scale),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: mainColor,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: buttonPad),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        textStyle: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: buttonFont,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const SignupScreen()),
+                        );
+                      },
+                      child: const Text('Get Started'),
+                    ),
+                  ),
+                  SizedBox(height: 10 * scale),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black87,
+                        side: BorderSide(color: Colors.grey.shade300, width: 2),
+                        padding: EdgeInsets.symmetric(vertical: buttonPad),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        textStyle: TextStyle(
+                          fontSize: buttonFont * 0.9,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        );
+                      },
+                      child: const Text('I already have an account'),
+                    ),
+                  ),
+                  SizedBox(height: 12 * scale),
+                ],
+              ),
             ),
           ),
         ),
