@@ -182,6 +182,7 @@ class CommunityPostResponse(CommunityPostBase):
     user_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    comment_count: int  # Added field for number of comments
 
     class Config:
         orm_mode = True
