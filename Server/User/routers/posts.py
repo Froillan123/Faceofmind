@@ -51,7 +51,10 @@ def update_post(post_id: int, post_update: CommunityPostUpdate, db: Session = De
     post.content = post_update.content
     db.commit()
     db.refresh(post)
-    return post
+    comment_count = db.query(func.count(CommunityComment.id)).filter(CommunityComment.post_id == post.id).scalar()
+    post_dict = post.__dict__.copy()
+    post_dict['comment_count'] = comment_count
+    return CommunityPostResponse(**post_dict)
 
 @router.delete("/{post_id}")
 def delete_post(post_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
