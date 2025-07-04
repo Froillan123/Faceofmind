@@ -76,6 +76,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
         backgroundColor: Colors.white,
         foregroundColor: mainColor,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh Posts',
+            onPressed: _refreshPosts,
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _refreshPosts,
@@ -161,6 +168,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           ),
                           const SizedBox(height: 10),
                           Text(post['content'] ?? '', style: const TextStyle(fontSize: 16)),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.comment, size: 18, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${post['comment_count'] ?? 0} comments',
+                                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -254,14 +272,24 @@ class _CommentsModalState extends State<CommentsModal> {
         maxChildSize: 0.95,
         builder: (context, scrollController) => Column(
           children: [
-            Container(
-              width: 40,
-              height: 5,
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(8),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 40,
+                  height: 5,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Refresh Comments',
+                  onPressed: _fetchComments,
+                ),
+              ],
             ),
             Expanded(
               child: FutureBuilder<List<dynamic>>(

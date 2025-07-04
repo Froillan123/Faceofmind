@@ -19,7 +19,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool sent = false;
   bool codeVerified = false;
   bool passwordVisible = false;
-  bool confirmPasswordVisible = false;
   bool passwordValid = true;
   bool confirmPasswordValid = true;
   bool isLoading = false;
@@ -68,14 +67,40 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
   }
 
-  void _verifyCode() {
-    if (codeController.text.length == 6) {
-      setState(() { codeVerified = true; });
+  Future<void> _verifyCode() async {
+    setState(() { isLoading = true; });
+    // Try to verify the code by calling the reset password endpoint with a dummy password
+    final res = await ApiService.resetPassword(
+      emailController.text.trim(),
+      codeController.text.trim(),
+      'dummyPassword123', // Use a dummy password just to check code validity
+    );
+    setState(() { isLoading = false; });
+    if (res['success'] == false && (res['message']?.contains('Invalid') ?? false)) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
+          title: const Text('Invalid Code'),
+          content: Text(res['message'] ?? 'Invalid or expired code'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+    if ((res['success'] == false && (res['message']?.contains('password') ?? false)) || res['success'] == true) {
+      // Code is valid
+      setState(() { codeVerified = true; });
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
           title: const Text('Code Verified'),
-          content: const Text('Code verified! Enter new password.'),
+          content: const Text('OTP is correct! You can now set a new password.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -86,11 +111,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         ),
       );
     } else {
+      // Other errors
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Invalid Code'),
-          content: const Text('Invalid code'),
+          title: const Text('Error'),
+          content: Text(res['message'] ?? 'Failed to verify code'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -215,78 +241,80 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  SizedBox(height: 32),
+                  SizedBox(height: 24),
                   if (!sent) ...[
-                    const SizedBox(height: 32),
-                    Text('Enter your email', style: TextStyle(fontSize: 18 * fontScale, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 12),
+                    Text('Enter your email', style: TextStyle(fontSize: 15 * fontScale, fontWeight: FontWeight.w500)),
+                    SizedBox(height: 8),
                     TextField(
                       controller: emailController,
+                      style: TextStyle(fontSize: 14 * fontScale),
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.email_outlined, color: Colors.grey.shade400),
                         hintText: 'Email',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: isLoading ? null : _sendResetCode,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: mainColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 18 * fontScale),
+                    SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : _sendResetCode,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: mainColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 15 * fontScale),
+                        ),
+                        child: isLoading ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text('Send Reset Password'),
                       ),
-                      child: const Text('Send Reset Password'),
                     ),
                   ] else if (!codeVerified) ...[
-                    const SizedBox(height: 32),
-                    Text('Enter the code sent to your email', style: TextStyle(fontSize: 18 * fontScale, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 12),
+                    Text('Enter the code sent to your email', style: TextStyle(fontSize: 15 * fontScale, fontWeight: FontWeight.w500)),
+                    SizedBox(height: 8),
                     TextField(
                       controller: codeController,
                       keyboardType: TextInputType.number,
                       maxLength: 6,
+                      style: TextStyle(fontSize: 14 * fontScale),
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.lock_outline, color: Colors.grey.shade400),
                         hintText: 'Reset Code',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                         counterText: '',
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: _verifyCode,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: mainColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 18 * fontScale),
+                    SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : _verifyCode,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: mainColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 15 * fontScale),
+                        ),
+                        child: isLoading ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text('Verify Code'),
                       ),
-                      child: const Text('Verify Code'),
                     ),
                   ] else ...[
-                    const SizedBox(height: 32),
-                    Text('Enter new password', style: TextStyle(fontSize: 18 * fontScale, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 12),
+                    Text('Enter your new password', style: TextStyle(fontSize: 15 * fontScale, fontWeight: FontWeight.w500)),
+                    SizedBox(height: 8),
                     TextField(
                       controller: passwordController,
                       obscureText: !passwordVisible,
+                      style: TextStyle(fontSize: 14 * fontScale),
+                      keyboardType: TextInputType.text,
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.lock_outline, color: Colors.grey.shade400),
                         hintText: 'New Password',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: passwordValid ? Colors.grey.shade200 : Colors.red, width: 2),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: passwordValid ? mainColor : Colors.red, width: 2),
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                         suffixIcon: IconButton(
                           icon: Icon(passwordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey.shade400),
                           onPressed: () => setState(() => passwordVisible = !passwordVisible),
@@ -299,25 +327,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         });
                       },
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 8),
                     TextField(
                       controller: confirmPasswordController,
-                      obscureText: !confirmPasswordVisible,
+                      obscureText: !passwordVisible,
+                      style: TextStyle(fontSize: 14 * fontScale),
+                      keyboardType: TextInputType.text,
                       decoration: InputDecoration(
                         prefixIcon: Icon(Icons.lock_outline, color: Colors.grey.shade400),
                         hintText: 'Confirm Password',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: confirmPasswordValid ? Colors.grey.shade200 : Colors.red, width: 2),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: confirmPasswordValid ? mainColor : Colors.red, width: 2),
-                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                         suffixIcon: IconButton(
-                          icon: Icon(confirmPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey.shade400),
-                          onPressed: () => setState(() => confirmPasswordVisible = !confirmPasswordVisible),
+                          icon: Icon(passwordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.grey.shade400),
+                          onPressed: () => setState(() => passwordVisible = !passwordVisible),
                         ),
                       ),
                       onChanged: (val) {
@@ -326,17 +349,20 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         });
                       },
                     ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: isLoading ? null : _resetPassword,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: mainColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 18 * fontScale),
+                    SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : _resetPassword,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: mainColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 15 * fontScale),
+                        ),
+                        child: isLoading ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text('Reset Password'),
                       ),
-                      child: const Text('Reset Password'),
                     ),
                   ],
                 ],

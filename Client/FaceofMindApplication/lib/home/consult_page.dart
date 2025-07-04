@@ -83,7 +83,7 @@ class _ConsultPageState extends State<ConsultPage> {
   Map<String, dynamic>? _resultData;
 
   // Emotion tally placeholder
-  int _emotionPercent = 25; // Example: 25% happy
+  int? _emotionPercent = null; // Start as null, set when detected
   String _emotionLabel = 'Hi how are you today?';
 
   // New: Tally for detected emotions and conversation
@@ -394,12 +394,19 @@ User: "$input"
   }
 
   void _endSessionAndProcessEmotion() async {
+    print('DEBUG: Starting session processing...');
     setState(() {
       _sessionActive = false;
       _showSessionProcessing = true;
     });
+    print('DEBUG: _showSessionProcessing set to true');
+    
     _speech.stop();
     _tts?.stop();
+    
+    // Add a small delay to ensure UI updates
+    await Future.delayed(const Duration(milliseconds: 100));
+    
     String dominantEmotion = 'neutral';
     if (_detectedEmotions.isNotEmpty) {
       final counts = <String, int>{};
@@ -408,13 +415,23 @@ User: "$input"
       }
       dominantEmotion = counts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
     }
+    
     final voiceContent = _conversationTurns.join(' ');
+    print('DEBUG: Session ID: $_sessionId, Dominant emotion: $dominantEmotion');
+    
     if (_sessionId != null) {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? '';
+      print('DEBUG: Calling API to process emotion...');
       final res = await ApiService.processEmotion(token, _sessionId!, dominantEmotion, voiceContent);
+      print('DEBUG: API response: $res');
+      
       if (!mounted) return;
-          setState(() {
+      
+      // Ensure processing modal shows for at least 1 second
+      await Future.delayed(const Duration(seconds: 1));
+      
+      setState(() {
         _showSessionProcessing = false;
         if (res != null && res['success'] == true && res['data'] != null) {
             _showResult = true;
@@ -428,6 +445,11 @@ User: "$input"
         }
       });
     } else {
+      print('DEBUG: No session ID, showing error result');
+      
+      // Ensure processing modal shows for at least 1 second
+      await Future.delayed(const Duration(seconds: 1));
+      
       setState(() {
         _showSessionProcessing = false;
         _showResult = true;
@@ -616,10 +638,65 @@ User: "$input"
                                           style: TextStyle(fontSize: 15, color: Colors.grey[900]),
                                         ),
                                       )),
+                                    // Show URLs if present
+                                    if (_resultData!['urls'] != null && (_resultData!['urls'] as List).isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 12),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Helpful Links:', style: TextStyle(fontWeight: FontWeight.bold, color: accent, fontSize: 15)),
+                                            ...(_resultData!['urls'] as List).map((url) => Padding(
+                                              padding: const EdgeInsets.symmetric(vertical: 4),
+                                              child: InkWell(
+                                                onTap: () async {
+                                                  if (await canLaunch(url)) {
+                                                    await launch(url);
+                                                  }
+                                                },
+                                                child: Text(
+                                                  url,
+                                                  style: TextStyle(color: Colors.blue[700], decoration: TextDecoration.underline, fontSize: 14),
+                                                ),
+                                              ),
+                                            )),
+                                          ],
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 18),
+                            // Feedback button
+                            if (!_feedbackSubmitted)
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.feedback, color: Colors.white),
+                                  label: const Text('Add Feedback'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: accent,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                  onPressed: () => setState(() => _showFeedbackDialog = true),
+                                ),
+                              ),
+                            if (_feedbackSubmitted)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.check_circle, color: accent, size: 22),
+                                    const SizedBox(width: 6),
+                                    Text('Feedback submitted. Thank you!', style: TextStyle(color: accent, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -630,13 +707,33 @@ User: "$input"
                 ),
               ),
             ),
-            if (_showSessionProcessing)
-              Container(
-                color: Colors.black.withOpacity(0.3),
-                child: const Center(
-                  child: CircularProgressIndicator(),
+                      if (_showSessionProcessing)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: Center(
+                child: Container(
+                  width: 240,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 64,
+                        height: 64,
+                        child: CircularProgressIndicator(strokeWidth: 6, color: Colors.white),
+                      ),
+                      SizedBox(height: 24),
+                      Text(
+                        'Processing...',
+                        style: TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ),
+            ),
           ],
                       ),
                     );
@@ -708,9 +805,9 @@ User: "$input"
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          '${_emotionPercent}%',
+                          _emotionPercent == null ? '' : '${_emotionPercent}%',
                           style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: mainColor),
-                          ),
+                        ),
                       ],
                     ),
               ),
@@ -753,20 +850,26 @@ User: "$input"
           if (_showSessionProcessing)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withOpacity(0.7),
                 child: const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-              SizedBox(
+                      SizedBox(
                         width: 64,
                         height: 64,
                         child: CircularProgressIndicator(strokeWidth: 6, color: Colors.white),
                       ),
                       SizedBox(height: 24),
-                      Text(
-                        'Processing...',
-                        style: TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
+                      SizedBox(
+                        width: 220,
+                        child: Text(
+                          'Processing...',
+                          style: TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                          softWrap: true,
+                          overflow: TextOverflow.visible,
+                        ),
                       ),
                     ],
                   ),
