@@ -37,7 +37,9 @@ def create_post(post: CommunityPostCreate, db: Session = Depends(get_db), curren
     db.add(db_post)
     db.commit()
     db.refresh(db_post)
-    return db_post
+    post_dict = db_post.__dict__.copy()
+    post_dict['comment_count'] = 0
+    return CommunityPostResponse(**post_dict)
 
 @router.put("/{post_id}", response_model=CommunityPostResponse)
 def update_post(post_id: int, post_update: CommunityPostUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
