@@ -2,22 +2,33 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
-from models import CommunityPost, User
+from models import CommunityPost, User, CommunityComment
 from schemas import CommunityPostCreate, CommunityPostUpdate, CommunityPostResponse
 from dependencies import get_current_user
+from sqlalchemy import func
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
 @router.get("/", response_model=List[CommunityPostResponse])
 def get_posts(db: Session = Depends(get_db)):
-    return db.query(CommunityPost).order_by(CommunityPost.id.desc()).all()
+    posts = db.query(CommunityPost).order_by(CommunityPost.id.desc()).all()
+    result = []
+    for post in posts:
+        comment_count = db.query(func.count(CommunityComment.id)).filter(CommunityComment.post_id == post.id).scalar()
+        post_dict = post.__dict__.copy()
+        post_dict['comment_count'] = comment_count
+        result.append(CommunityPostResponse(**post_dict))
+    return result
 
 @router.get("/{post_id}", response_model=CommunityPostResponse)
 def get_post(post_id: int, db: Session = Depends(get_db)):
     post = db.query(CommunityPost).filter(CommunityPost.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    return post
+    comment_count = db.query(func.count(CommunityComment.id)).filter(CommunityComment.post_id == post.id).scalar()
+    post_dict = post.__dict__.copy()
+    post_dict['comment_count'] = comment_count
+    return CommunityPostResponse(**post_dict)
 
 @router.post("/", response_model=CommunityPostResponse)
 def create_post(post: CommunityPostCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
