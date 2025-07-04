@@ -20,7 +20,22 @@ security = HTTPBearer()
 
 
 def send_otp_email(email: str, otp: str):
-    msg = MIMEText(f"Your FaceofMind verification code is: {otp}")
+    html_content = f"""
+    <html>
+      <body style='font-family: Arial, sans-serif; color: #222;'>
+        <div style='max-width: 480px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; padding: 24px; background: #f9f9f9;'>
+          <h2 style='color: #5CD581;'>Welcome to FaceofMind!</h2>
+          <p>Thank you for registering. Your verification code is:</p>
+          <div style='font-size: 28px; font-weight: bold; color: #5CD581; margin: 16px 0;'>{otp}</div>
+          <p style='margin-top: 24px;'>If you did not request this, you can ignore this email.</p>
+          <p style='color: #888; font-size: 13px; margin-top: 24px;'>
+            <b>Note:</b> If you don't see this email in your inbox, please check your <b>Spam</b> or <b>Junk</b> folder.
+          </p>
+        </div>
+      </body>
+    </html>
+    """
+    msg = MIMEText(html_content, 'html')
     msg["Subject"] = "FaceofMind Email Verification Code"
     msg["From"] = settings.smtp_email
     msg["To"] = email
@@ -31,7 +46,22 @@ def send_otp_email(email: str, otp: str):
 
 
 def send_password_reset_email(email: str, otp: str):
-    msg = MIMEText(f"Your FaceofMind password reset code is: {otp}")
+    html_content = f"""
+    <html>
+      <body style='font-family: Arial, sans-serif; color: #222;'>
+        <div style='max-width: 480px; margin: 0 auto; border: 1px solid #eee; border-radius: 12px; padding: 24px; background: #f9f9f9;'>
+          <h2 style='color: #3498db;'>FaceofMind Password Reset</h2>
+          <p>Here is your password reset code:</p>
+          <div style='font-size: 28px; font-weight: bold; color: #3498db; margin: 16px 0;'>{otp}</div>
+          <p style='margin-top: 24px;'>If you did not request a password reset, you can ignore this email.</p>
+          <p style='color: #888; font-size: 13px; margin-top: 24px;'>
+            <b>Note:</b> If you don't see this email in your inbox, please check your <b>Spam</b> or <b>Junk</b> folder.
+          </p>
+        </div>
+      </body>
+    </html>
+    """
+    msg = MIMEText(html_content, 'html')
     msg["Subject"] = "FaceofMind Password Reset Code"
     msg["From"] = settings.smtp_email
     msg["To"] = email
