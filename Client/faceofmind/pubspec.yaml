@@ -1,0 +1,48 @@
+name: FaceofMind
+description: "A Mobile Based Application for Mental Health Awareness."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  http: ^1.1.0
+  fluttertoast: ^8.2.4
+  shared_preferences: ^2.2.2
+  intl: ^0.18.1
+  url_launcher: ^6.2.5
+  speech_to_text: ^7.1.0
+  flutter_tts: ^3.8.2
+  permission_handler: ^11.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^5.0.0
+  flutter_native_splash: ^2.3.10
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/logo.png
+    - assets/images/qrcodegcash.png
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"
+  min_sdk_android: 21
+  min_sdk_ios: 13
+  prefix: "Icon"
+
+flutter_native_splash:
+  image: assets/images/logo.png
+  color: "#ffffff"
+  android: true
+  ios: true
